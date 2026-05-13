@@ -19,9 +19,9 @@ const CONFIG = {
     BASE_SPEED: 4,
     STONE_COUNT: 20,
     STAGES: [
-        { id:1, name:'Stage 1', goalGold:300,  mathRange:10, filter:'none',                                          label:'마법 초원' },
-        { id:2, name:'Stage 2', goalGold:800,  mathRange:20, filter:'hue-rotate(200deg) brightness(0.65) saturate(2)', label:'신비한 밤' },
-        { id:3, name:'Stage 3', goalGold:1500, mathRange:30, filter:'sepia(0.7) saturate(2.5) hue-rotate(320deg)',    label:'붉은 노을' },
+        { id:1, name:'Stage 1', goalGold:500,  mathRange:10, filter:'none',                                          label:'마법 초원' },
+        { id:2, name:'Stage 2', goalGold:1500, mathRange:20, filter:'hue-rotate(200deg) brightness(0.65) saturate(2)', label:'신비한 밤' },
+        { id:3, name:'Stage 3', goalGold:3000, mathRange:30, filter:'sepia(0.7) saturate(2.5) hue-rotate(320deg)',    label:'붉은 노을' },
     ]
 };
 
@@ -147,13 +147,24 @@ class Player extends Entity {
         this.moving = false;
     }
     update() {
+        // 속도 계산 로직을 update 상단으로 이동하여 항상 최신화 유지
+        this.updateSpeed();
+
         let dx = this.vx, dy = this.vy;
         this.moving = (dx !== 0 || dy !== 0);
+        
+        // 8방향 시점 결정을 위한 facing 로직 보강
         if (dx !== 0) this.facing = dx > 0 ? 1 : -1;
+        
         if (dx && dy) { const m = Math.SQRT2; dx/=m; dy/=m; }
         this.x = Math.max(0, Math.min(this.x + dx * this.speed, CONFIG.WW - this.w));
         this.y = Math.max(0, Math.min(this.y + dy * this.speed, CONFIG.WH - this.h));
         this.tick++;
+    }
+    updateSpeed() {
+        let multiplier = 1;
+        if (this.items.has('boots')) multiplier = 1.8;
+        this.speed = Math.round(CONFIG.BASE_SPEED * multiplier);
     }
     addGold(amt) {
         const earned = amt * (this.hasOwl ? 2 : 1);
@@ -186,15 +197,16 @@ class Player extends Entity {
         // 방향에 따른 행(Row) 결정
         // 0: Down (Front), 1: Up (Back), 2: Right, 3: Left
         let row = 0;
-        if (this.vy > 0) row = 0;
-        else if (this.vy < 0) row = 1;
-        else if (this.vx > 0) row = 2;
-        else if (this.vx < 0) row = 3;
-        else {
+        if (Math.abs(this.vx) > Math.abs(this.vy)) {
+            // 좌우 이동이 더 크거나 대각선일 때 좌우 우선
+            row = this.vx > 0 ? 2 : 3;
+        } else if (Math.abs(this.vy) > 0) {
+            // 상하 이동이 더 클 때
+            row = this.vy > 0 ? 0 : 1;
+        } else {
             // 정지 상태일 때 마지막 방향 유지
             if (this.facing === 1) row = 2;
             else if (this.facing === -1) row = 3;
-            // 위/아래 보고 정지했을 경우도 고려 가능하지만 단순화
         }
 
         // 애니메이션 프레임 (4프레임 순환)
@@ -260,23 +272,33 @@ class Portal extends Entity {
         const cy = this.y + this.h/2;
 
         ctx.save();
-        // 포탈 빛무리 (Glow)
+        // 1. 포탈 빛무리 (Glow)
         const pulse = 1 + Math.sin(this.t * 0.5) * 0.1;
-        const grd = ctx.createRadialGradient(cx, cy, 20, cx, cy, 90 * pulse);
-        grd.addColorStop(0, 'rgba(167,139,250,0.5)');
-        grd.addColorStop(1, 'rgba(167,139,250,0)');
+        const grd = ctx.createRadialGradient(cx, cy, 20, cx, cy, 100 * pulse);
+        grd.addColorStop(0, 'rgba(167,139,250,0.6)');
+        grd.addColorStop(0.5, 'rgba(124,92,252,0.3)');
+        grd.addColorStop(1, 'rgba(124,92,252,0)');
         ctx.fillStyle = grd;
         ctx.beginPath(); 
-        ctx.arc(cx, cy, 100 * pulse, 0, Math.PI * 2); 
+        ctx.arc(cx, cy, 110 * pulse, 0, Math.PI * 2); 
         ctx.fill();
 
-        // 포탈 이미지 (회전 없음)
-        ctx.drawImage(img, this.x, this.y, this.w, this.h);
+        // 2. 블랙홀 회전 효과 (여러 겹의 이미지 회전)
+        for (let i = 0; i < 3; i++) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(this.t * (0.5 + i * 0.3) * (i % 2 === 0 ? 1 : -1));
+            const scale = (1 - i * 0.2) * pulse;
+            ctx.scale(scale, scale);
+            ctx.globalAlpha = 1 - i * 0.3;
+            ctx.drawImage(img, -this.w/2, -this.h/2, this.w, this.h);
+            ctx.restore();
+        }
 
-        // 상단 가이드 화살표
+        // 3. 상단 가이드 화살표
         const ay = this.y - 40 + Math.sin(this.t * 2) * 10;
         ctx.fillStyle = '#ffd166';
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 15;
         ctx.shadowColor = '#ffd166';
         ctx.beginPath();
         ctx.moveTo(cx - 15, ay);
@@ -285,8 +307,9 @@ class Portal extends Entity {
         ctx.closePath();
         ctx.fill();
         
-        // 'GO' 텍스트
-        ctx.font = 'bold 18px Orbitron';
+        // 'ENTRY' 텍스트
+        ctx.shadowBlur = 5;
+        ctx.font = 'bold 20px Orbitron';
         ctx.textAlign = 'center';
         ctx.fillText('ENTRY', cx, ay - 10);
         
@@ -373,9 +396,22 @@ class QuizManager {
         setTimeout(() => this.inp.focus(), 50);
     }
     nextQ() {
-        const range = this.game.stageManager.currentStage().mathRange;
-        const a = Math.floor(Math.random() * range) + 1;
-        const b = Math.floor(Math.random() * range) + 1;
+        const stageIdx = this.game.stageManager.idx;
+        let a, b;
+
+        if (stageIdx === 0) {
+            // Stage 1: 한자리 + 한자리 (1~9)
+            a = Math.floor(Math.random() * 9) + 1;
+            b = Math.floor(Math.random() * 9) + 1;
+        } else if (stageIdx === 1) {
+            // Stage 2: 두자리 + 한자리 (10~99, 1~9)
+            a = Math.floor(Math.random() * 90) + 10;
+            b = Math.floor(Math.random() * 9) + 1;
+        } else {
+            // Stage 3: 두자리 + 두자리 (10~99, 10~99)
+            a = Math.floor(Math.random() * 90) + 10;
+            b = Math.floor(Math.random() * 90) + 10;
+        }
         
         // 가끔 뺄셈 문제도 섞어줌 (단, 결과가 양수여야 함)
         if (Math.random() > 0.6 && a !== b) {
@@ -387,9 +423,10 @@ class QuizManager {
             this.answer = a + b;
             this.qEl.textContent = `${a} + ${b} = ?`;
         }
-        // 제목에 남은 문제 수 표시
+        // 제목에 스테이지 명칭과 남은 문제 수 표시
+        const stageName = this.game.stageManager.currentStage().label;
         document.querySelector('#quiz-modal .modal-title').textContent =
-            `마법 봉인 해제! (${this.qCount+1}/${this.maxQ})`;
+            `[${stageName}] 마법 해제 (${this.qCount+1}/${this.maxQ})`;
         this.inp.value = '';
         this.fbEl.textContent = '';
         this.comboEl.textContent = this.combo;
@@ -456,7 +493,7 @@ class ShopManager {
             {
                 id:'boots', name:'바람의 부츠', price:1000, imgId:'item_boots',
                 desc:'이동 속도가 크게 증가합니다.',
-                effect: p => { p.speed = Math.round(CONFIG.BASE_SPEED * 1.8); }
+                effect: p => { /* dynamic speed calc in Player.update */ }
             },
             {
                 id:'owl', name:'황금 부엉이', price:3000, imgId:'pet_owl',
@@ -470,42 +507,42 @@ class ShopManager {
             {
                 id:'room_rug', name:'폭신한 카페트', price:500, imgId:'room_rug',
                 desc:'방 바닥을 따뜻하게 꾸며줍니다.', type:'furniture',
-                pos: { x: '50%', y: '85%', w: 400 }
+                pos: { x: '50%', y: '80%', w: 320 }
             },
             {
                 id:'room_bed', name:'마법 침대', price:1500, imgId:'room_bed',
                 desc:'고양이가 편히 쉴 수 있는 침대.', type:'furniture',
-                pos: { x: '20%', y: '75%', w: 200 }
+                pos: { x: '25%', y: '70%', w: 160 }
             },
             {
                 id:'room_desk', name:'공부 책상', price:2500, imgId:'room_desk',
                 desc:'수학 공부를 위한 튼튼한 책상.', type:'furniture',
-                pos: { x: '80%', y: '70%', w: 180 }
+                pos: { x: '75%', y: '65%', w: 140 }
             },
             {
                 id:'room_chair', name:'마법 의자', price:1200, imgId:'room_chair',
                 desc:'책상과 잘 어울리는 편한 의자.', type:'furniture',
-                pos: { x: '70%', y: '80%', w: 100 }
+                pos: { x: '68%', y: '75%', w: 80 }
             },
             {
                 id:'room_bookshelf', name:'마법 책장', price:4000, imgId:'room_bookshelf',
                 desc:'지혜가 담긴 책이 가득합니다.', type:'furniture',
-                pos: { x: '85%', y: '40%', w: 150 }
+                pos: { x: '88%', y: '45%', w: 120 }
             },
             {
                 id:'room_window', name:'하늘 창문', price:3500, imgId:'room_window',
                 desc:'마법 세계의 풍경이 보입니다.', type:'furniture',
-                pos: { x: '50%', y: '30%', w: 200 }
+                pos: { x: '50%', y: '35%', w: 160 }
             },
             {
                 id:'room_lamp', name:'크리스탈 조명', price:1800, imgId:'room_lamp',
                 desc:'방 안을 환하게 밝혀줍니다.', type:'furniture',
-                pos: { x: '80%', y: '55%', w: 80 }
+                pos: { x: '82%', y: '58%', w: 60 }
             },
             {
                 id:'room_plant', name:'생명의 화분', price:1000, imgId:'room_plant',
                 desc:'방에 생기를 불어넣는 식물.', type:'furniture',
-                pos: { x: '15%', y: '45%', w: 100 }
+                pos: { x: '18%', y: '48%', w: 80 }
             }
         ];
     }
@@ -636,9 +673,17 @@ class RoomManager {
 
 // ── StageManager ──────────────────────────────
 class StageManager {
-    constructor(game) { this.game = game; this.idx = 0; }
+    constructor(game) {
+        this.game = game;
+        this.idx = 0;
+        this.prevBtn = document.getElementById('prev-stage-btn');
+        this.prevBtn.onclick = () => this.prevStage();
+    }
     currentStage() { return CONFIG.STAGES[this.idx]; }
     checkGoal() {
+        // 3단계는 마지막이라 포탈이 생기지 않음
+        if (this.idx === 2) return;
+
         const stage = this.currentStage();
         if (this.game.player.gold >= stage.goalGold && !this.game.portal) {
             this.game.spawnPortal();
@@ -649,14 +694,35 @@ class StageManager {
     advance() {
         if (this.idx < CONFIG.STAGES.length - 1) {
             this.idx++;
-            this.game.portal = null;
-            this.game.stones = this.game.makeStones();
+            this.resetStage();
             const s = this.currentStage();
             this.game.notify(`🌟 ${s.name} - ${s.label} 시작!`);
             this.game.audio.playFanfare();
-            this.game.updateHUD();
         } else {
             this.game.notify('🎉 모든 스테이지 클리어! 수학 마법사 달성!');
+        }
+    }
+    prevStage() {
+        if (this.idx > 0) {
+            this.idx--;
+            this.resetStage();
+            const s = this.currentStage();
+            this.game.notify(`🔙 ${s.name} - ${s.label}(으)로 돌아왔습니다.`);
+        }
+    }
+    resetStage() {
+        this.game.portal = null;
+        this.game.stones = this.game.makeStones();
+        this.game.updateHUD();
+        SaveManager.save(this.game.player, this.game.bestCombo, this.idx);
+    }
+    updateUI() {
+        if (this.idx > 0) {
+            this.prevBtn.classList.remove('hidden');
+            const prevLabel = CONFIG.STAGES[this.idx - 1].label;
+            this.prevBtn.textContent = `⬅️ ${prevLabel} 돌아가기`;
+        } else {
+            this.prevBtn.classList.add('hidden');
         }
     }
 }
@@ -907,6 +973,7 @@ class Game {
         document.getElementById('stage-display').textContent   = s.name;
         document.getElementById('progress-display').textContent = `${this.player.gold} / ${s.goalGold}G`;
         document.getElementById('best-combo-display').textContent = this.bestCombo;
+        this.stageManager.updateUI();
     }
 
     notify(msg) {

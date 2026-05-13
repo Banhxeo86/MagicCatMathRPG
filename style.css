@@ -104,6 +104,20 @@ body {
     box-shadow: 0 0 15px rgba(245,158,11,0.5);
 }
 
+.prev-pill {
+    background: linear-gradient(135deg, #64748b, #475569);
+    color: white;
+    cursor: pointer;
+    pointer-events: auto;
+    border: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.prev-pill:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(100,116,139,0.5);
+}
+
 /* ── 알림 배너 ── */
 #notification {
     position: absolute;
