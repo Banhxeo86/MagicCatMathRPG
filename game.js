@@ -247,24 +247,49 @@ class MagicStone extends Entity {
 // ── Portal (회전하는 magic_stone x2 크기) ─────
 class Portal extends Entity {
     constructor(x, y) {
-        super(x, y, 140, 140, 'magic_stone');
-        this.angle = 0;
+        super(x, y, 160, 160, 'potal');
         this.active = true;
+        this.t = 0; // for float animation
     }
-    update() { this.angle += 0.03; }
+    update() { this.t += 0.05; }
     draw(ctx, assets) {
         const img = assets.get(this.imgId);
         if (!img) return;
+        
+        const cx = this.x + this.w/2;
+        const cy = this.y + this.h/2;
+
         ctx.save();
-        ctx.translate(this.x + this.w/2, this.y + this.h/2);
-        ctx.rotate(this.angle);
-        // 빛나는 후광
-        const grd = ctx.createRadialGradient(0,0,20,0,0,80);
-        grd.addColorStop(0, 'rgba(167,139,250,0.4)');
+        // 포탈 빛무리 (Glow)
+        const pulse = 1 + Math.sin(this.t * 0.5) * 0.1;
+        const grd = ctx.createRadialGradient(cx, cy, 20, cx, cy, 90 * pulse);
+        grd.addColorStop(0, 'rgba(167,139,250,0.5)');
         grd.addColorStop(1, 'rgba(167,139,250,0)');
         ctx.fillStyle = grd;
-        ctx.beginPath(); ctx.arc(0,0,80,0,Math.PI*2); ctx.fill();
-        ctx.drawImage(img, -this.w/2, -this.h/2, this.w, this.h);
+        ctx.beginPath(); 
+        ctx.arc(cx, cy, 100 * pulse, 0, Math.PI * 2); 
+        ctx.fill();
+
+        // 포탈 이미지 (회전 없음)
+        ctx.drawImage(img, this.x, this.y, this.w, this.h);
+
+        // 상단 가이드 화살표
+        const ay = this.y - 40 + Math.sin(this.t * 2) * 10;
+        ctx.fillStyle = '#ffd166';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#ffd166';
+        ctx.beginPath();
+        ctx.moveTo(cx - 15, ay);
+        ctx.lineTo(cx + 15, ay);
+        ctx.lineTo(cx, ay + 20);
+        ctx.closePath();
+        ctx.fill();
+        
+        // 'GO' 텍스트
+        ctx.font = 'bold 18px Orbitron';
+        ctx.textAlign = 'center';
+        ctx.fillText('ENTRY', cx, ay - 10);
+        
         ctx.restore();
     }
 }
@@ -305,6 +330,12 @@ class AssetManager {
         this.cache[id] = oc; // canvas도 drawImage 호환
     }
     get(id) { return this.cache[id]; }
+    getSrc(id) {
+        const asset = this.cache[id];
+        if (!asset) return '';
+        if (asset instanceof HTMLCanvasElement) return asset.toDataURL();
+        return asset.src || '';
+    }
 }
 
 
@@ -322,6 +353,12 @@ class QuizManager {
         this.combo   = 0;
         this.active  = false;
         this.inp.addEventListener('keydown', e => { if (e.key==='Enter') this.check(); });
+        this.inp.addEventListener('input', () => {
+            // 음수 입력 방지
+            if (this.inp.value.includes('-')) {
+                this.inp.value = this.inp.value.replace('-', '');
+            }
+        });
         this.submitBtn.addEventListener('click', () => this.check());
     }
     start(stone) {
@@ -339,9 +376,17 @@ class QuizManager {
         const range = this.game.stageManager.currentStage().mathRange;
         const a = Math.floor(Math.random() * range) + 1;
         const b = Math.floor(Math.random() * range) + 1;
-        this.answer = a + b;
-        const remaining = this.maxQ - this.qCount;
-        this.qEl.textContent = `${a} + ${b} = ?`;
+        
+        // 가끔 뺄셈 문제도 섞어줌 (단, 결과가 양수여야 함)
+        if (Math.random() > 0.6 && a !== b) {
+            const max = Math.max(a, b);
+            const min = Math.min(a, b);
+            this.answer = max - min;
+            this.qEl.textContent = `${max} - ${min} = ?`;
+        } else {
+            this.answer = a + b;
+            this.qEl.textContent = `${a} + ${b} = ?`;
+        }
         // 제목에 남은 문제 수 표시
         document.querySelector('#quiz-modal .modal-title').textContent =
             `마법 봉인 해제! (${this.qCount+1}/${this.maxQ})`;
@@ -474,11 +519,11 @@ class ShopManager {
         this.grid.innerHTML = '';
         this.items.forEach(item => {
             const owned = this.game.player.items.has(item.id);
-            const img = this.game.assets.get(item.imgId);
+            const imgSrc = this.game.assets.getSrc(item.imgId);
             const div = document.createElement('div');
             div.className = `shop-item${owned ? ' owned' : ''}`;
             div.innerHTML = `
-                <img src="${img?.src||''}" alt="${item.name}">
+                <img src="${imgSrc}" alt="${item.name}">
                 <span class="item-name">${item.name}</span>
                 <span class="item-desc">${item.desc}</span>
                 <span class="item-price">${owned ? '✅ 구매 완료' : item.price+'G'}</span>`;
@@ -537,10 +582,10 @@ class RoomManager {
         this.layer.innerHTML = '';
         this.game.shopManager.items.forEach(item => {
             if (item.type === 'furniture' && this.game.player.items.has(item.id)) {
-                const img = this.game.assets.get(item.imgId);
-                if (img) {
+                const imgSrc = this.game.assets.getSrc(item.imgId);
+                if (imgSrc) {
                     const el = document.createElement('img');
-                    el.src = img.src;
+                    el.src = imgSrc;
                     el.className = 'room-furniture';
                     el.style.left = item.pos.x;
                     el.style.top = item.pos.y;
@@ -748,6 +793,7 @@ class Game {
                 { id:'room_lamp',   path:'images/room_lamp.png'   },
                 { id:'room_plant',  path:'images/room_plant.png'  },
                 { id:'room_window', path:'images/room_window.png' },
+                { id:'potal',       path:'images/potal.png'       },
             ]);
 
             console.log("✨ 에셋 로드 완료. 투명화 처리 중...");
