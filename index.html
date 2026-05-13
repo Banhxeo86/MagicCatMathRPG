@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마법 고양이 수학 RPG</title>
+    <meta name="description" content="마법 고양이와 함께 떠나는 수학 RPG 어드벤처!">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+        <!-- HUD Overlay -->
+        <div id="hud">
+            <div id="hud-left">
+                <div class="hud-pill gold-pill">💰 <span id="gold-display">0</span>G</div>
+                <div class="hud-pill stage-pill">🗺️ <span id="stage-display">Stage 1</span></div>
+                <div class="hud-pill progress-pill">🎯 목표: <span id="progress-display">0 / 300G</span></div>
+                <button id="open-shop-btn" class="hud-pill shop-pill">🏪 상점</button>
+                <button id="open-room" class="hud-pill room-pill">🏠 마이룸</button>
+            </div>
+            <div id="hud-right">
+                <div class="hud-pill combo-pill">🏆 최고콤보 <span id="best-combo-display">0</span></div>
+            </div>
+        </div>
+
+        <!-- 알림 배너 -->
+        <div id="notification" class="hidden"></div>
+
+        <!-- 퀴즈 모달 -->
+        <div id="quiz-modal" class="modal hidden">
+            <div class="modal-card quiz-card">
+                <div class="quiz-deco">✨</div>
+                <h2 class="modal-title">마법 봉인 해제!</h2>
+                <div id="quiz-question" class="question-text">?</div>
+                <input id="quiz-input" type="number" placeholder="정답을 입력하세요" autocomplete="off">
+                <div class="combo-row">콤보 🔥 <span id="combo-count">0</span></div>
+                <div id="quiz-feedback" class="feedback-text"></div>
+            </div>
+        </div>
+
+        <!-- 상점 모달 -->
+        <div id="shop-modal" class="modal hidden">
+            <div class="modal-card shop-card">
+                <div class="modal-header">
+                    <h2 class="modal-title">🏪 신비한 마법 상점</h2>
+                    <button id="close-shop" class="icon-btn">✕</button>
+                </div>
+                <div id="shop-items" class="shop-grid"></div>
+                <div class="shop-footer">보유 골드: <span id="shop-gold">0</span>G</div>
+            </div>
+        </div>
+
+        <!-- 마이룸 모달 -->
+        <div id="room-modal" class="modal hidden">
+            <div class="modal-card room-card">
+                <div class="modal-header">
+                    <h2 class="modal-title">🏠 고양이의 마법 방</h2>
+                    <button id="close-room" class="icon-btn">✕</button>
+                </div>
+                <div id="room-container" class="room-display">
+                    <!-- 가구들이 여기에 배치됨 -->
+                    <div id="room-items-layer"></div>
+                    <canvas id="roomCatCanvas" width="200" height="200"></canvas>
+                </div>
+                <div class="room-footer">상점에서 가구를 구매해 방을 꾸며보세요!</div>
+            </div>
+        </div>
+
+        <!-- 시작 화면 -->
+        <div id="start-screen" class="modal">
+            <div class="modal-card start-card">
+                <div class="start-deco">🐱</div>
+                <h1 class="game-title">마법 고양이<br>수학 RPG</h1>
+                <div class="guide-box">
+                    <h3>📜 모험 가이드</h3>
+                    <ul>
+                        <li>🎮 <strong>이동:</strong> 방향키 (←↑↓→)</li>
+                        <li>🧲 <strong>광맥 충돌:</strong> 수학 퀴즈 도전!</li>
+                        <li>🔥 <strong>콤보:</strong> 연속 정답으로 골드 폭발!</li>
+                        <li>🏪 <strong>상점:</strong> S키로 아이템 구매</li>
+                        <li>🌀 <strong>포탈:</strong> 목표 골드 달성 시 등장</li>
+                    </ul>
+                </div>
+                <button id="start-btn" class="primary-btn">⚔️ 모험 시작!</button>
+                <button id="reset-btn" class="ghost-btn">저장 데이터 초기화</button>
+                <div class="copyright">© AI-ON All Rights Reserved.</div>
+            </div>
+        </div>
+
+        <!-- 로딩 화면 -->
+        <div id="loading-screen" class="modal">
+            <div class="loading-box">
+                <div class="spinner"></div>
+                <p>마법 세계를 불러오는 중...</p>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
