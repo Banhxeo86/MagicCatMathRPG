@@ -449,3 +449,117 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── 모바일 컨트롤 (조이스틱) ── */
+#mobile-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
+}
+
+#mobile-controls.hidden { display: none; }
+
+#joystick-zone {
+    position: absolute;
+    bottom: 30px;
+    left: 30px;
+    width: 150px;
+    height: 150px;
+    pointer-events: auto;
+}
+
+#joystick-base {
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+#joystick-stick {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, var(--primary), #a855f7);
+    border-radius: 50%;
+    box-shadow: 0 0 15px rgba(124, 92, 252, 0.6);
+    transition: transform 0.1s ease-out;
+}
+
+/* ── 반응형 최적화 ── */
+@media (max-width: 900px) {
+    #game-container {
+        width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+        border: none;
+    }
+
+    #gameCanvas {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .modal-card {
+        width: 90% !important;
+        padding: 20px;
+    }
+
+    .question-text {
+        font-size: 2rem;
+    }
+
+    #quiz-input {
+        font-size: 1.2rem;
+    }
+
+    .shop-grid {
+        grid-template-columns: repeat(2, 1fr);
+        max-height: 300px;
+    }
+
+    .hud-pill {
+        padding: 4px 10px;
+        font-size: 0.75rem;
+    }
+
+    #notification {
+        width: 80%;
+        font-size: 0.9rem;
+        text-align: center;
+    }
+
+    /* 시작 화면 가이드 간소화 */
+    .guide-box {
+        padding: 10px;
+    }
+    .guide-box li {
+        font-size: 0.8rem;
+    }
+}
+
+/* 세로 모드 대응 */
+@media (max-width: 500px) {
+    #hud {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    #hud-right {
+        margin-top: 4px;
+    }
+    .shop-grid {
+        grid-template-columns: 1fr;
+    }
+}
+

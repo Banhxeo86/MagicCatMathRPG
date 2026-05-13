@@ -317,10 +317,12 @@ class QuizManager {
         this.inp     = document.getElementById('quiz-input');
         this.fbEl    = document.getElementById('quiz-feedback');
         this.comboEl = document.getElementById('combo-count');
+        this.submitBtn = document.getElementById('quiz-submit-btn');
         this.answer  = 0;
         this.combo   = 0;
         this.active  = false;
         this.inp.addEventListener('keydown', e => { if (e.key==='Enter') this.check(); });
+        this.submitBtn.addEventListener('click', () => this.check());
     }
     start(stone) {
         if (this.active) return;
@@ -614,6 +616,77 @@ class StageManager {
     }
 }
 
+// ── VirtualJoystick ────────────────────────────
+class VirtualJoystick {
+    constructor() {
+        this.zone = document.getElementById('joystick-zone');
+        this.base = document.getElementById('joystick-base');
+        this.stick = document.getElementById('joystick-stick');
+        this.active = false;
+        this.value = { x: 0, y: 0 };
+        this.startPos = { x: 0, y: 0 };
+        this.maxRadius = 50;
+
+        this.init();
+    }
+    init() {
+        const handleStart = (e) => {
+            this.active = true;
+            const touch = e.touches ? e.touches[0] : e;
+            const rect = this.base.getBoundingClientRect();
+            this.startPos = {
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2
+            };
+            this.handleMove(e);
+        };
+        const handleEnd = () => {
+            this.active = false;
+            this.value = { x: 0, y: 0 };
+            this.stick.style.transform = `translate(0px, 0px)`;
+        };
+        const handleMove = (e) => {
+            if (!this.active) return;
+            e.preventDefault();
+            const touch = e.touches ? e.touches[0] : e;
+            const dx = touch.clientX - this.startPos.x;
+            const dy = touch.clientY - this.startPos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx);
+            const limitedDist = Math.min(distance, this.maxRadius);
+
+            this.value.x = (Math.cos(angle) * limitedDist) / this.maxRadius;
+            this.value.y = (Math.sin(angle) * limitedDist) / this.maxRadius;
+
+            const moveX = Math.cos(angle) * limitedDist;
+            const moveY = Math.sin(angle) * limitedDist;
+            this.stick.style.transform = `translate(${moveX}px, ${moveY}px)`;
+        };
+
+        this.zone.addEventListener('touchstart', handleStart, { passive: false });
+        this.zone.addEventListener('touchmove', handleMove, { passive: false });
+        this.zone.addEventListener('touchend', handleEnd);
+        this.zone.addEventListener('mousedown', handleStart);
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('mouseup', handleEnd);
+    }
+    handleMove(e) {
+        const touch = e.touches ? e.touches[0] : e;
+        const dx = touch.clientX - this.startPos.x;
+        const dy = touch.clientY - this.startPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx);
+        const limitedDist = Math.min(distance, this.maxRadius);
+
+        this.value.x = (Math.cos(angle) * limitedDist) / this.maxRadius;
+        this.value.y = (Math.sin(angle) * limitedDist) / this.maxRadius;
+
+        const moveX = Math.cos(angle) * limitedDist;
+        const moveY = Math.sin(angle) * limitedDist;
+        this.stick.style.transform = `translate(${moveX}px, ${moveY}px)`;
+    }
+}
+
 // ── Game (메인 클래스) ────────────────────────
 class Game {
     constructor() {
@@ -637,8 +710,22 @@ class Game {
         this.shopManager  = new ShopManager(this);
         this.roomManager  = new RoomManager(this);
         this.quizManager  = new QuizManager(this);
+        this.joystick     = null;
 
         this.init();
+        this.handleResize();
+        window.addEventListener('resize', () => this.handleResize());
+    }
+
+    handleResize() {
+        const isMobile = window.innerWidth <= 900;
+        const mobileControls = document.getElementById('mobile-controls');
+        if (isMobile) {
+            mobileControls.classList.remove('hidden');
+            if (!this.joystick) this.joystick = new VirtualJoystick();
+        } else {
+            mobileControls.classList.add('hidden');
+        }
     }
 
     async init() {
@@ -704,6 +791,7 @@ class Game {
             ss.classList.add('hidden');
             this.paused = false;
             this.bindKeys();
+            this.bindTouch(); // 터치 이벤트 바인딩 추가
             this.loop();
         };
 
@@ -759,6 +847,14 @@ class Game {
         window.addEventListener('keyup', e => { this.keys[e.code] = false; });
     }
 
+    bindTouch() {
+        // 모바일에서 캔버스 터치 시 상호작용 (필요할 경우)
+        this.canvas.addEventListener('touchstart', (e) => {
+            if (this.paused) return;
+            // 특정 액션이 필요하면 여기에 추가
+        }, { passive: true });
+    }
+
     updateHUD() {
         const s = this.stageManager.currentStage();
         document.getElementById('gold-display').textContent    = this.player.gold;
@@ -780,10 +876,18 @@ class Game {
         if (this.paused) return;
 
         this.player.vx = 0; this.player.vy = 0;
+        
+        // 키보드 입력
         if (this.keys['ArrowLeft']  || this.keys['KeyA']) this.player.vx = -1;
         if (this.keys['ArrowRight'] || this.keys['KeyD']) this.player.vx =  1;
         if (this.keys['ArrowUp']    || this.keys['KeyW']) this.player.vy = -1;
-        if (this.keys['ArrowDown'])                       this.player.vy =  1;
+        if (this.keys['ArrowDown']  || this.keys['KeyS']) this.player.vy =  1;
+
+        // 조이스틱 입력 (키보드보다 우선순위 혹은 합산)
+        if (this.joystick && this.joystick.active) {
+            this.player.vx = this.joystick.value.x;
+            this.player.vy = this.joystick.value.y;
+        }
 
         this.player.update();
         this.camera.follow(this.player);

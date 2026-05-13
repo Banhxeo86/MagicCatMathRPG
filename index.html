@@ -36,6 +36,7 @@
                 <h2 class="modal-title">마법 봉인 해제!</h2>
                 <div id="quiz-question" class="question-text">?</div>
                 <input id="quiz-input" type="number" placeholder="정답을 입력하세요" autocomplete="off">
+                <button id="quiz-submit-btn" class="primary-btn" style="margin-top: 15px;">봉인 해제!</button>
                 <div class="combo-row">콤보 🔥 <span id="combo-count">0</span></div>
                 <div id="quiz-feedback" class="feedback-text"></div>
             </div>
@@ -95,6 +96,15 @@
             <div class="loading-box">
                 <div class="spinner"></div>
                 <p>마법 세계를 불러오는 중...</p>
+            </div>
+        </div>
+
+        <!-- 모바일 컨트롤 (조이스틱 등) -->
+        <div id="mobile-controls" class="hidden">
+            <div id="joystick-zone">
+                <div id="joystick-base">
+                    <div id="joystick-stick"></div>
+                </div>
             </div>
         </div>
     </div>
