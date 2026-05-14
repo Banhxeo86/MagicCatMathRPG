@@ -519,22 +519,22 @@ class ShopManager {
         document.getElementById('close-shop').onclick = () => this.toggle();
         document.getElementById('open-shop-btn').onclick = () => this.toggle();
 
-        // 아이템 데이터 배열
+        // 아이템 데이터 배열 (마법 테마로 대개편)
         this.items = [
             {
                 id:'boots_lv1', name:'바람의 부츠 (Lv.1)', price:800, imgId:'item_boots',
                 desc:'이동 속도가 30% 증가합니다.',
-                effect: p => { /* dynamic speed calc in Player.update */ }
+                effect: p => {}
             },
             {
                 id:'boots_lv2', name:'질주의 부츠 (Lv.2)', price:2500, imgId:'item_boots',
                 desc:'이동 속도가 60% 증가합니다.', requires:'boots_lv1',
-                effect: p => { /* dynamic speed calc in Player.update */ }
+                effect: p => {}
             },
             {
                 id:'boots_lv3', name:'신속의 부츠 (Lv.3)', price:6000, imgId:'item_boots',
                 desc:'이동 속도가 100% 증가합니다!', requires:'boots_lv2',
-                effect: p => { /* dynamic speed calc in Player.update */ }
+                effect: p => {}
             },
             {
                 id:'owl_lv1', name:'초보 부엉이 (Lv.1)', price:1500, imgId:'pet_owl',
@@ -552,44 +552,34 @@ class ShopManager {
                 effect: p => { p.owlLevel = 3; }
             },
             {
-                id:'room_rug', name:'폭신한 카페트', price:500, imgId:'room_rug',
-                desc:'방 바닥을 따뜻하게 꾸며줍니다.', type:'furniture',
-                pos: { x: '50%', y: '85%', w: 450 }
+                id:'room_rug', name:'신비한 문양 카페트', price:500, imgId:'room_rug',
+                desc:'마법의 기운이 느껴지는 중앙 카페트.', type:'furniture',
+                pos: { x: '50%', y: '80%', w: 400 }
             },
             {
-                id:'room_bed', name:'마법 침대', price:1500, imgId:'room_bed',
-                desc:'고양이가 편히 쉴 수 있는 침대.', type:'furniture',
-                pos: { x: '25%', y: '72%', w: 220 }
+                id:'room_broom', name:'하늘을 나는 빗자루', price:1800, imgId:'room_broom',
+                desc:'스스로 방을 청소하고 떠다니는 빗자루.', type:'furniture',
+                pos: { x: '85%', y: '55%', w: 100 }, isFloating: true
             },
             {
-                id:'room_desk', name:'공부 책상', price:2500, imgId:'room_desk',
-                desc:'수학 공부를 위한 튼튼한 책상.', type:'furniture',
-                pos: { x: '78%', y: '75%', w: 180 }
+                id:'room_grimoire', name:'떠다니는 마도서', price:2200, imgId:'room_bookshelf',
+                desc:'지혜의 마법이 담긴 신비로운 고서.', type:'furniture',
+                pos: { x: '15%', y: '55%', w: 90 }, isFloating: true
             },
             {
-                id:'room_chair', name:'마법 의자', price:1200, imgId:'room_chair',
-                desc:'책상과 잘 어울리는 편한 의자.', type:'furniture',
-                pos: { x: '65%', y: '82%', w: 90 }
+                id:'room_magic_crystal', name:'공중 부양 수정', price:3500, imgId:'room_magic_crystal',
+                desc:'신비로운 빛을 내며 떠있는 수정.', type:'furniture',
+                pos: { x: '75%', y: '35%', w: 80 }, isFloating: true
             },
             {
-                id:'room_bookshelf', name:'마법 책장', price:4000, imgId:'room_bookshelf',
-                desc:'지혜가 담긴 책이 가득합니다.', type:'furniture',
-                pos: { x: '12%', y: '45%', w: 120 }
+                id:'room_potion', name:'신비한 마법 물약', price:1200, imgId:'room_potion',
+                desc:'보글보글 거품이 일어나는 마법 포션.', type:'furniture',
+                pos: { x: '30%', y: '45%', w: 60 }, isFloating: true
             },
             {
-                id:'room_window', name:'하늘 창문', price:3500, imgId:'room_window',
-                desc:'마법 세계의 풍경이 보입니다.', type:'furniture',
-                pos: { x: '50%', y: '30%', w: 200 }
-            },
-            {
-                id:'room_lamp', name:'크리스탈 조명', price:1800, imgId:'room_lamp',
-                desc:'방 안을 환하게 밝혀줍니다.', type:'furniture',
-                pos: { x: '85%', y: '50%', w: 70 }
-            },
-            {
-                id:'room_plant', name:'생명의 화분', price:1000, imgId:'room_plant',
-                desc:'방에 생기를 불어넣는 식물.', type:'furniture',
-                pos: { x: '10%', y: '80%', w: 80 }
+                id:'room_crystal_ball', name:'예언의 수정구', price:4500, imgId:'room_crystal_ball',
+                desc:'미래의 운명을 보여주는 신비한 구슬.', type:'furniture',
+                pos: { x: '60%', y: '40%', w: 80 }, isFloating: true
             }
         ];
     }
@@ -663,16 +653,14 @@ class RoomManager {
         this.canvas = document.getElementById('roomCatCanvas');
         this.ctx    = this.canvas.getContext('2d');
 
-        // 가구별 세부 설정 (w: 너비, zBase: 기본 깊이, transform: 원근감 보정)
+        // 가구별 마법 테마 세부 설정
         this.furnitureConfig = {
-            'room_rug':       { zBase: 1,  w: 380, transform: 'scaleY(0.5)', borderRadius: '50%' }, // 타원형 카페트
-            'room_window':    { zBase: 2,  w: 130, transform: 'perspective(500px) rotateX(10deg)', isWall: true }, // 벽면에 밀착
-            'room_bookshelf': { zBase: 5,  w: 110, transform: 'skewY(-2deg)' }, // 벽면 각도 조절
-            'room_bed':       { zBase: 10, w: 180 },
-            'room_desk':      { zBase: 10, w: 140 },
-            'room_chair':     { zBase: 15, w: 75 },
-            'room_lamp':      { zBase: 15, w: 55 },
-            'room_plant':     { zBase: 15, w: 75, transform: 'translateY(5px)' } // 바닥 밀착 보정
+            'room_rug':           { zBase: 0,  w: 420, transform: 'scaleY(0.45)', borderRadius: '50%' },
+            'room_broom':         { zBase: 20, w: 100, isFloating: true },
+            'room_grimoire':      { zBase: 22, w: 100, isFloating: true },
+            'room_magic_crystal': { zBase: 25, w: 90,  isFloating: true },
+            'room_potion':        { zBase: 18, w: 65,  isFloating: true },
+            'room_crystal_ball':  { zBase: 23, w: 85,  isFloating: true }
         };
 
         document.getElementById('open-room').onclick  = () => this.toggle();
@@ -706,12 +694,14 @@ class RoomManager {
 
             const el = document.createElement('div');
             el.className = 'room-furniture';
+            if (cfg.isFloating) el.classList.add('floating-magical');
+            if (cfg.isSparkling) el.classList.add('sparkle-magical');
+
             el.style.left = xPct + '%';
             el.style.top = yPct + '%';
             el.style.width = cfg.w + 'px';
             el.style.zIndex = Math.floor(cfg.zBase * 10 + yPct);
             
-            // 이미지에 변형 적용
             const imgEl = document.createElement('img');
             imgEl.src = imgSrc;
             imgEl.style.width = '100%';
@@ -761,9 +751,10 @@ class RoomManager {
             xPct = Math.max(0, Math.min(xPct, 100));
             
             const cfg = this.furnitureConfig[itemId] || { zBase: 10 };
-            // 창문 등 벽면 가구는 상단에만, 바닥 가구는 하단에만 이동 제한
             if (cfg.isWall) {
                 yPct = Math.max(10, Math.min(yPct, 45));
+            } else if (cfg.isFloating) {
+                yPct = Math.max(20, Math.min(yPct, 70)); // 공중 부양 제한
             } else {
                 yPct = Math.max(45, Math.min(yPct, 100));
             }

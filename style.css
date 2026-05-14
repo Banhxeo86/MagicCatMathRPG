@@ -199,6 +199,26 @@ body {
     opacity: 0.8;
     transform: translate(-50%, -105%) scale(1.1);
     z-index: 9999 !important;
+    animation: none !important; /* 드래그 중에는 애니메이션 정지 */
+}
+
+/* ── Magical Animations ── */
+.floating-magical {
+    animation: floatingMagical 3s ease-in-out infinite;
+}
+
+@keyframes floatingMagical {
+    0%, 100% { transform: translate(-50%, -100%) translateY(0); }
+    50%      { transform: translate(-50%, -100%) translateY(-15px); }
+}
+
+.sparkle-magical {
+    animation: sparkleMagical 2s ease-in-out infinite;
+}
+
+@keyframes sparkleMagical {
+    0%, 100% { filter: brightness(1) drop-shadow(0 0 5px rgba(255,209,102,0.4)); }
+    50%      { filter: brightness(1.5) drop-shadow(0 0 20px rgba(255,209,102,0.8)); }
 }
 
 /* ── 알림 배너 ── */
@@ -458,6 +478,7 @@ body {
     pointer-events: none;
     width: 24cqw;
     height: 24cqw;
+    z-index: 50; /* 카페트보다는 위, 공중 부양 아이템보다는 아래 */
 }
 
 .room-footer {
