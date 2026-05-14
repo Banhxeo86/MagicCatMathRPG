@@ -19,10 +19,8 @@
                 <div class="stat-item scroll-bg" id="stage-panel">
                     <span class="label">📜 STAGE</span>
                     <span id="stage-display" class="value">Stage 1</span>
-                    <span id="progress-display" class="sub-value">0 / 2000G</span>
                 </div>
                 <div class="stat-item potion-bg" id="gold-panel">
-                    <span class="icon">🧪</span>
                     <span id="gold-display" class="value">0</span><span class="unit">G</span>
                 </div>
                 <div class="stat-item medal-bg" id="combo-panel">
@@ -34,13 +32,17 @@
 
             <!-- Right: Controls Panel -->
             <div id="controls-panel">
+                <button id="bgm-toggle-btn" class="magic-btn" title="배경음악 토글">
+                    <span class="icon">🎵</span>
+                    <span class="btn-text">BGM 끄기</span>
+                </button>
+                <button id="prev-stage-btn" class="magic-btn hidden" title="이전 스테이지">
+                    <span class="icon">🔙</span>
+                    <span class="btn-text">돌아가기</span>
+                </button>
                 <button id="open-shop-btn" class="magic-btn" title="상점">
                     <span class="icon">🏪</span>
                     <span class="btn-text">마법상점</span>
-                </button>
-                <button id="open-room" class="magic-btn" title="마이룸">
-                    <span class="icon">🏠</span>
-                    <span class="btn-text">마이룸</span>
                 </button>
                 <button id="exit-btn" class="magic-btn exit-btn" title="나가기">
                     <span class="icon">🚪</span>
@@ -77,21 +79,6 @@
             </div>
         </div>
 
-        <!-- 마이룸 모달 -->
-        <div id="room-modal" class="modal hidden">
-            <div class="modal-card room-card">
-                <div class="modal-header">
-                    <h2 class="modal-title">🏠 고양이의 마법 방</h2>
-                    <button id="close-room" class="icon-btn">✕</button>
-                </div>
-                <div id="room-container" class="room-display">
-                    <!-- 가구들이 여기에 배치됨 -->
-                    <div id="room-items-layer"></div>
-                    <canvas id="roomCatCanvas" width="200" height="200"></canvas>
-                </div>
-                <div class="room-footer">상점에서 가구를 구매해 방을 꾸며보세요!</div>
-            </div>
-        </div>
 
         <!-- 시작 화면 -->
         <div id="start-screen" class="modal">
@@ -113,6 +100,8 @@
                 <div class="copyright">© AI-ON All Rights Reserved.</div>
             </div>
         </div>
+
+
 
         <!-- 로딩 화면 -->
         <div id="loading-screen" class="modal">

@@ -29,6 +29,36 @@ const CONFIG = {
 class AudioManager {
     constructor() {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.bgm = new Audio();
+        this.bgm.loop = true;
+        this.bgm.volume = 0.2;
+        this.bgmEnabled = true; // 기본값: 켜기
+    }
+    
+    playBGM(stageIdx) {
+        if (!this.bgmEnabled) {
+            this.bgm.pause();
+            return;
+        }
+        
+        const src = `images/bg_music${stageIdx + 1}.mp3`;
+        if (this.bgm.src && this.bgm.src.endsWith(src)) {
+            this.bgm.play().catch(e => console.log('BGM play failed:', e));
+            return;
+        }
+        
+        this.bgm.src = src;
+        this.bgm.play().catch(e => console.log('BGM play failed:', e));
+    }
+    
+    toggleBGM(stageIdx) {
+        this.bgmEnabled = !this.bgmEnabled;
+        if (this.bgmEnabled) {
+            this.playBGM(stageIdx);
+        } else {
+            this.bgm.pause();
+        }
+        return this.bgmEnabled;
     }
     _tone(type, freqs, dur, vol = 0.25) {
         freqs.forEach((f, i) => {
@@ -149,7 +179,8 @@ class Player extends Entity {
         this.items  = new Set();
         this.hasOwl = false;
         this.owlLevel = 0;
-        this.level = 1; // 1: 아기 고양이, 2: 견습 고양이, 3: 대마법 고양이
+        this.level = 1; 
+        this.solvedInStage = 0; // 현재 스테이지에서 맞춘 문제 수
         this.furniturePositions = {}; // itemId -> {x, y}
         this.vx = 0; this.vy = 0;
         // 애니메이션용
@@ -175,19 +206,41 @@ class Player extends Entity {
         this.y = Math.max(0, Math.min(this.y + dy * moveDist, CONFIG.WH - this.h));
         
         this.tick += 60 * dt;
+
+        // 3단계 마법 효과 (이동 시 파티클 생성)
+        if (this.level >= 3 && this.moving && Math.random() > 0.6) {
+            // 이 시점에서는 game 객체를 직접 참조하기 어려울 수 있으니
+            // Entity 업데이트 루프에서 처리하는 것이 좋지만, 
+            // 현재 구조상 Player.update(dt)에 파티클을 쏘기 위해선
+            // Game 인스턴스에서 ParticleSystem을 업데이트 할때 추가해주거나
+            // 여기서 window.game?.particles.burst() 같은 편법을 써야함.
+            // 더 안전하게는 Entity가 game을 알게 하는 것.
+            // 일단 임시로 글로벌에서 가져올수 없으니 Game.update에서 처리하도록 미룸.
+        }
     }
     updateSpeed() {
         let multiplier = 1;
-        if (this.items.has('boots_lv3')) multiplier = 2.0;
-        else if (this.items.has('boots_lv2')) multiplier = 1.6;
-        else if (this.items.has('boots_lv1')) multiplier = 1.3;
+        
+        // 레벨업에 따른 이동 속도 보너스 (2단계: +10%, 3단계: +30%, 4단계: +50%)
+        if (this.level === 2) multiplier += 0.1;
+        else if (this.level === 3) multiplier += 0.3;
+        else if (this.level === 4) multiplier += 0.5;
+
+        if (this.items.has('boots_lv3')) multiplier *= 2.0;
+        else if (this.items.has('boots_lv2')) multiplier *= 1.6;
+        else if (this.items.has('boots_lv1')) multiplier *= 1.3;
         this.speed = Math.round(CONFIG.BASE_SPEED * multiplier);
     }
     addGold(amt) {
         let bonus = 1;
-        if (this.owlLevel === 1) bonus = 1.2;
-        else if (this.owlLevel === 2) bonus = 1.5;
-        else if (this.owlLevel === 3) bonus = 2.0;
+        if (this.owlLevel === 1) bonus += 0.05;
+        else if (this.owlLevel === 2) bonus += 0.10;
+        else if (this.owlLevel === 3) bonus += 0.20;
+
+        // 레벨업에 따른 골드 획득 보너스 (2단계: +10%, 3단계: +30%, 4단계: +50%)
+        if (this.level === 2) bonus += 0.1;
+        else if (this.level === 3) bonus += 0.3;
+        else if (this.level === 4) bonus += 0.5;
 
         const earned = Math.round(amt * bonus);
         this.gold += earned;
@@ -211,6 +264,7 @@ class Player extends Entity {
         let sheetId = 'cat_level11';
         if (this.level === 2) sheetId = 'cat_level12';
         else if (this.level === 3) sheetId = 'cat_level13';
+        else if (this.level >= 4) sheetId = 'cat_level14';
 
         const sheet = assets.get(sheetId) || assets.get('cat_player');
         if (!sheet) {
@@ -238,16 +292,41 @@ class Player extends Entity {
 
         ctx.save();
         ctx.translate(cx, cy);
+
+        // 초월(4단계) 오라 효과
+        if (this.level >= 4) {
+            ctx.save();
+            const time = Date.now() / 200;
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                const radius = this.w / 2 + 5 + Math.sin(time + i) * 12;
+                ctx.arc(0, 5, radius, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${(time * 50 + i * 40) % 360}, 100%, 75%, 0.15)`;
+                ctx.fill();
+            }
+            // 위로 솟아오르는 빛 효과
+            ctx.globalCompositeOperation = 'lighter';
+            const gradient = ctx.createLinearGradient(0, 10, 0, -this.h - 30);
+            gradient.addColorStop(0, 'rgba(255, 209, 102, 0)');
+            gradient.addColorStop(0.5, 'rgba(255, 209, 102, 0.4)');
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = gradient;
+            const gw = this.w + Math.sin(time*1.5)*10;
+            ctx.fillRect(-gw/2, -this.h - 30, gw, this.h + 40);
+            ctx.restore();
+        }
+
         ctx.scale(breathe, breathe);
         
-        // shadowBlur 제거 (태블릿 성능 저하의 주범)
-        // 대신 캐릭터 뒤에 아주 연한 보라색 원을 그려 마법 느낌 유지
-        ctx.globalAlpha = 0.3;
-        ctx.fillStyle = '#a78bfa';
-        ctx.beginPath();
-        ctx.arc(0, 0, this.w/2 + 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
+        // 1레벨 제외 (2,3레벨) 연한 보라색 원 유지
+        if (this.level > 1 && this.level < 4) {
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = '#a78bfa';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.w/2 + 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
         
         ctx.drawImage(
             sheet,
@@ -346,7 +425,10 @@ class Portal extends Entity {
 class AssetManager {
     constructor() { this.cache = {}; }
     async preload(list) {
-        const timeout = 60000; // 60초 타임아웃 (태블릿 환경 고려)
+        const timeout = 90000; // 90초 (대용량 에셋 고려)
+        const loadingText = document.querySelector('#loading-screen p');
+        let count = 0;
+
         await Promise.all(list.map(({id, path}) =>
             new Promise((res, rej) => {
                 const img = new Image();
@@ -354,7 +436,14 @@ class AssetManager {
                     console.error(`Preload Timeout: ${path}`);
                     rej(`Timeout: ${path}`);
                 }, timeout);
-                img.onload  = () => { clearTimeout(timer); this.cache[id] = img; res(); };
+                
+                img.onload  = () => { 
+                    clearTimeout(timer); 
+                    this.cache[id] = img; 
+                    count++;
+                    if (loadingText) loadingText.innerText = `마법 세계 불러오는 중... (${count}/${list.length})`;
+                    res(); 
+                };
                 img.onerror = () => { clearTimeout(timer); rej(`Failed: ${path}`); };
                 img.src = path;
             })
@@ -406,7 +495,12 @@ class QuizManager {
         this.combo   = 0;
         this.totalCorrect = 0;
         this.active  = false;
-        this.inp.addEventListener('keydown', e => { if (e.key==='Enter') this.check(); });
+        this.inp.addEventListener('keydown', e => { 
+            if (e.key === 'Enter') this.check(); 
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+            }
+        });
         this.inp.addEventListener('input', () => {
             // 음수 입력 방지
             if (this.inp.value.includes('-')) {
@@ -469,22 +563,29 @@ class QuizManager {
             this.combo++;
             this.qCount++;
             this.totalCorrect++;
+            this.game.player.solvedInStage++; // 스테이지 내 정답 카운트
+            
             if (this.combo > this.game.bestCombo) this.game.bestCombo = this.combo;
 
             const stage = this.game.stageManager.currentStage();
             const base = stage.baseGold || 50;
-            // 콤보 보너스: 기본금의 10%씩 복리/가산 (여기서는 가산: 100%, 110%, 120%...)
             const earned = this.game.player.addGold(Math.round(base * (1 + (this.combo - 1) * 0.1)));
 
             this.fbEl.style.color = '#06d6a0';
             this.fbEl.textContent = `정답! +${earned}G 🎉`;
             this.game.audio.playCorrect();
             this.game.particles.burst(this.game.player.x + 32, this.game.player.y + 32);
+            
+            // 50문제를 맞추면 포탈 생성
+            if (this.game.player.solvedInStage >= 50 && !this.game.portal) {
+                this.game.notify('🌌 마법 에너지가 충분합니다! 포탈이 열렸습니다!');
+                this.game.spawnPortal();
+            }
+
             this.game.updateHUD();
             SaveManager.save(this.game.player, this.game.bestCombo, this.game.stageManager.idx);
-            this.game.stageManager.checkGoal();
+            
             if (this.qCount >= this.maxQ) {
-                // 목표 문제 수 모두 완료 → 광맥 제거 후 닫기
                 this.fbEl.textContent = `완벽! 광맥이 사라집니다 ✨`;
                 setTimeout(() => this.closeAndRemoveStone(), 700);
             } else {
@@ -530,12 +631,12 @@ class ShopManager {
         // 아이템 데이터 배열 (마법 테마로 대개편)
         this.items = [
             {
-                id:'boots_lv1', name:'바람의 부츠 (Lv.1)', price:800, imgId:'item_boots',
+                id:'boots_lv1', name:'바람의 부츠 (Lv.1)', price:1000, imgId:'item_boots',
                 desc:'이동 속도가 30% 증가합니다.',
                 effect: p => {}
             },
             {
-                id:'boots_lv2', name:'질주의 부츠 (Lv.2)', price:2500, imgId:'item_boots',
+                id:'boots_lv2', name:'질주의 부츠 (Lv.2)', price:3000, imgId:'item_boots',
                 desc:'이동 속도가 60% 증가합니다.', requires:'boots_lv1',
                 effect: p => {}
             },
@@ -545,44 +646,34 @@ class ShopManager {
                 effect: p => {}
             },
             {
-                id:'owl_lv1', name:'초보 부엉이 (Lv.1)', price:1500, imgId:'pet_owl',
-                desc:'골드 획득 +20% 보너스!',
+                id:'owl_lv1', name:'초보 부엉이 (Lv.1)', price:3000, imgId:'pet_owl',
+                desc:'골드 획득 +5% 보너스!',
                 effect: p => { p.hasOwl = true; p.owlLevel = 1; this.game.pet = new Pet(p); }
             },
             {
                 id:'owl_lv2', name:'숙련 부엉이 (Lv.2)', price:4000, imgId:'pet_owl',
-                desc:'골드 획득 +50% 보너스!', requires:'owl_lv1',
+                desc:'골드 획득 +10% 보너스!', requires:'owl_lv1',
                 effect: p => { p.owlLevel = 2; }
             },
             {
                 id:'owl_lv3', name:'대마법 부엉이 (Lv.3)', price:10000, imgId:'pet_owl',
-                desc:'골드 획득 +100% 보너스!', requires:'owl_lv2',
+                desc:'골드 획득 +20% 보너스!', requires:'owl_lv2',
                 effect: p => { p.owlLevel = 3; }
             },
             {
-                id:'room_rug', name:'신비한 문양 카페트', price:500, imgId:'room_rug',
-                desc:'마법의 기운이 느껴지는 중앙 카페트.', type:'furniture',
-                pos: { x: '50%', y: '80%', w: 400 }
+                id:'evolve_lv2', name:'견습 진화', price:10000, imgId:'room_bookshelf',
+                desc:'골드 및 이속 10% 증가!',
+                effect: p => { p.level = 2; this.game.notify('✨ 견습 고양이로 진화했습니다!'); this.game.audio.playFanfare(); }
             },
             {
-                id:'room_broom', name:'하늘을 나는 빗자루', price:1800, imgId:'room_broom',
-                desc:'스스로 방을 청소하고 떠다니는 빗자루.', type:'furniture',
-                pos: { x: '85%', y: '55%', w: 100 }, isFloating: true
+                id:'evolve_lv3', name:'대마법 진화', price:30000, imgId:'room_bookshelf',
+                desc:'골드 및 이속 30% 증가!', requires:'evolve_lv2',
+                effect: p => { p.level = 3; this.game.notify('✨ 대마법 고양이로 진화했습니다!'); this.game.audio.playFanfare(); }
             },
             {
-                id:'room_grimoire', name:'떠다니는 마도서', price:2200, imgId:'room_bookshelf',
-                desc:'지혜의 마법이 담긴 신비로운 고서.', type:'furniture',
-                pos: { x: '15%', y: '55%', w: 90 }, isFloating: true
-            },
-            {
-                id:'room_magic_crystal', name:'공중 부양 수정', price:3500, imgId:'room_magic_crystal',
-                desc:'신비로운 빛을 내며 떠있는 수정.', type:'furniture',
-                pos: { x: '75%', y: '35%', w: 80 }, isFloating: true
-            },
-            {
-                id:'room_potion', name:'신비한 마법 물약', price:1200, imgId:'room_potion',
-                desc:'보글보글 거품이 일어나는 마법 포션.', type:'furniture',
-                pos: { x: '30%', y: '45%', w: 60 }, isFloating: true
+                id:'evolve_lv4', name:'초월 진화', price:50000, imgId:'room_magic_crystal',
+                desc:'골드 및 이속 50% 증가, 초월 효과!', requires:'evolve_lv3',
+                effect: p => { p.level = 4; this.game.notify('✨ 전설의 초월 고양이로 진화했습니다!'); this.game.audio.playFanfare(); }
             }
         ];
     }
@@ -590,28 +681,47 @@ class ShopManager {
         const wasHidden = this.modal.classList.contains('hidden');
         this.modal.classList.toggle('hidden');
         this.game.paused = wasHidden ? true : false;
-        if (wasHidden) { this.goldEl.textContent = this.game.player.gold; this.render(); }
+        if (wasHidden) { 
+            this.goldEl.textContent = this.game.player.gold; 
+            this.render(); 
+        }
     }
     render() {
-        this.grid.innerHTML = '';
-        this.items.forEach(item => {
-            const owned = this.game.player.items.has(item.id);
-            const locked = item.requires && !this.game.player.items.has(item.requires);
-            const imgSrc = this.game.assets.getSrc(item.imgId);
-            const div = document.createElement('div');
-            div.className = `shop-item${owned ? ' owned' : ''}${locked ? ' locked' : ''}`;
-            
-            let priceText = owned ? '✅ 구매 완료' : item.price+'G';
-            if (!owned && locked) priceText = '🔒 잠김';
+        const grid = this.grid;
+        grid.innerHTML = '';
 
-            div.innerHTML = `
-                <img src="${imgSrc}" alt="${item.name}" style="${locked ? 'filter:grayscale(1) brightness(0.5)' : ''}">
-                <span class="item-name">${item.name}</span>
-                <span class="item-desc">${item.desc}</span>
-                <span class="item-price">${priceText}</span>`;
-            if (!owned && !locked) div.onclick = () => this.buy(item);
-            else if (locked) div.onclick = () => this.game.notify(`⚠️ 이전 단계 아이템을 먼저 구매해야 합니다!`);
-            this.grid.appendChild(div);
+        this.items.forEach(item => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'shop-item';
+            
+            const img = this.game.assets.get(item.imgId);
+            const isOwned = this.game.player.items.has(item.id);
+            
+            const imgContainerId = `shop-img-${item.id}`;
+            itemDiv.innerHTML = `
+                <div class="item-img" id="${imgContainerId}"></div>
+                <div class="item-info">
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-desc">${item.desc}</div>
+                </div>
+                <button class="buy-btn ${isOwned ? 'owned' : ''}" ${isOwned ? 'disabled' : ''}>
+                    ${isOwned ? '보유중' : `${item.price} G`}
+                </button>
+            `;
+            
+            grid.appendChild(itemDiv);
+            
+            const container = document.getElementById(imgContainerId);
+            if (container && img) {
+                const displayImg = img.cloneNode ? img.cloneNode(true) : img;
+                if (img instanceof HTMLCanvasElement) {
+                    displayImg.style.width = '100%';
+                    displayImg.style.height = '100%';
+                    displayImg.style.objectFit = 'contain';
+                }
+                container.appendChild(displayImg);
+            }
+            if (!isOwned) itemDiv.onclick = () => this.buy(item);
         });
     }
     buy(item) {
@@ -634,12 +744,6 @@ class ShopManager {
         this.render();
         
         this.game.notify(`🎉 [${item.name}] 구매 완료!`);
-        
-        // 구매 후 상점 닫고 방 열기
-        setTimeout(() => {
-            this.toggle();
-            this.game.roomManager.toggle();
-        }, 500);
     }
     applyEffect(itemId) {
         const item = this.items.find(i => i.id === itemId);
@@ -647,169 +751,7 @@ class ShopManager {
     }
 }
 
-// ── RoomManager (Advanced Housing) ────────────────
-class RoomManager {
-    constructor(game) {
-        this.game   = game;
-        this.modal  = document.getElementById('room-modal');
-        this.layer  = document.getElementById('room-items-layer');
-        this.canvas = document.getElementById('roomCatCanvas');
-        this.ctx    = this.canvas.getContext('2d');
 
-        // 가구별 마법 테마 세부 설정
-        this.furnitureConfig = {
-            'room_rug':           { zBase: 0,  w: 420, transform: 'scaleY(0.45)', borderRadius: '50%' },
-            'room_broom':         { zBase: 20, w: 100, isFloating: true },
-            'room_grimoire':      { zBase: 22, w: 100, isFloating: true },
-            'room_magic_crystal': { zBase: 25, w: 90,  isFloating: true },
-            'room_potion':        { zBase: 18, w: 65,  isFloating: true }
-        };
-
-        document.getElementById('open-room').onclick  = () => this.toggle();
-        document.getElementById('close-room').onclick = () => this.toggle();
-    }
-
-    toggle() {
-        const wasHidden = this.modal.classList.contains('hidden');
-        this.modal.classList.toggle('hidden');
-        this.game.paused = wasHidden ? true : false;
-        if (wasHidden) { this.render(); this.startAnimation(); }
-        else { this.stopAnimation(); }
-    }
-
-    render() {
-        this.layer.innerHTML = '';
-        const purchased = this.game.shopManager.items.filter(item => 
-            item.type === 'furniture' && this.game.player.items.has(item.id)
-        );
-
-        purchased.forEach(item => {
-            const imgSrc = this.game.assets.getSrc(item.imgId);
-            if (!imgSrc) return;
-
-            const cfg = this.furnitureConfig[item.id] || { zBase: 10, w: 100 };
-            const pos = this.game.player.furniturePositions[item.id] || item.pos; // 저장된 위치 또는 기본값
-            
-            // X, Y 좌표가 문자열(%)인 경우 숫자로 변환
-            let xPct = typeof pos.x === 'string' ? parseFloat(pos.x) : pos.x;
-            let yPct = typeof pos.y === 'string' ? parseFloat(pos.y) : pos.y;
-
-            const el = document.createElement('div');
-            el.className = 'room-furniture';
-            if (cfg.isFloating) el.classList.add('floating-magical');
-            if (cfg.isSparkling) el.classList.add('sparkle-magical');
-
-            el.style.left = xPct + '%';
-            el.style.top = yPct + '%';
-            el.style.width = cfg.w + 'px';
-            el.style.zIndex = Math.floor(cfg.zBase * 10 + yPct);
-            
-            const imgEl = document.createElement('img');
-            imgEl.src = imgSrc;
-            imgEl.style.width = '100%';
-            imgEl.style.pointerEvents = 'none';
-            if (cfg.transform) imgEl.style.transform = cfg.transform;
-            if (cfg.borderRadius) imgEl.style.borderRadius = cfg.borderRadius;
-            
-            el.appendChild(imgEl);
-            this.layer.appendChild(el);
-
-            this.makeDraggable(el, item.id);
-        });
-    }
-
-    makeDraggable(el, itemId) {
-        let isDragging = false;
-        let startX, startY;
-
-        const onStart = (e) => {
-            isDragging = true;
-            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-            
-            const rect = el.getBoundingClientRect();
-            startX = clientX - rect.left;
-            startY = clientY - rect.top;
-            
-            el.classList.add('dragging');
-            if (e.type === 'mousedown') e.preventDefault();
-        };
-
-        const onMove = (e) => {
-            if (!isDragging) return;
-            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-            
-            const containerRect = this.layer.parentElement.getBoundingClientRect();
-            
-            // Anchor point: Bottom-Center (transform: translate(-50%, -100%))
-            let newX = clientX - containerRect.left - startX + (el.offsetWidth / 2);
-            let newY = clientY - containerRect.top - startY + el.offsetHeight;
-
-            let xPct = (newX / containerRect.width) * 100;
-            let yPct = (newY / containerRect.height) * 100;
-
-            // Bounds
-            xPct = Math.max(0, Math.min(xPct, 100));
-            
-            const cfg = this.furnitureConfig[itemId] || { zBase: 10 };
-            if (cfg.isWall) {
-                yPct = Math.max(10, Math.min(yPct, 45));
-            } else if (cfg.isFloating) {
-                yPct = Math.max(20, Math.min(yPct, 70)); // 공중 부양 제한
-            } else {
-                yPct = Math.max(45, Math.min(yPct, 100));
-            }
-
-            el.style.left = xPct + '%';
-            el.style.top = yPct + '%';
-            
-            el.style.zIndex = Math.floor(cfg.zBase * 10 + yPct);
-            
-            this.game.player.furniturePositions[itemId] = { x: xPct, y: yPct };
-        };
-
-        const onEnd = () => {
-            if (isDragging) {
-                isDragging = false;
-                el.classList.remove('dragging');
-                SaveManager.save(this.game.player, this.game.bestCombo, this.game.stageManager.idx);
-            }
-        };
-
-        el.addEventListener('mousedown', onStart);
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onEnd);
-        
-        el.addEventListener('touchstart', onStart, { passive: false });
-        window.addEventListener('touchmove', onMove, { passive: false });
-        window.addEventListener('touchend', onEnd);
-    }
-
-    startAnimation() { this.animActive = true; this.loop(); }
-    stopAnimation()  { this.animActive = false; }
-    loop() {
-        if (!this.animActive) return;
-        this.drawCat();
-        requestAnimationFrame(() => this.loop());
-    }
-    drawCat() {
-        const ctx = this.ctx;
-        const sheet = this.game.assets.get('cat_player');
-        if (!sheet) return;
-        ctx.clearRect(0,0, this.canvas.width, this.canvas.height);
-        const frameW = Math.floor(sheet.width / 4);
-        const frameH = Math.floor(sheet.height / 4);
-        const tick = Date.now() / 100;
-        const frameIdx = Math.floor(tick / 2) % 4;
-        const breathe = 1 + Math.sin(tick * 0.5) * 0.03;
-        ctx.save();
-        ctx.translate(this.canvas.width/2, this.canvas.height/2);
-        ctx.scale(breathe, breathe);
-        ctx.drawImage(sheet, frameIdx * frameW, 0, frameW, frameH, -64, -64, 128, 128);
-        ctx.restore();
-    }
-}
 
 // ── StageManager ──────────────────────────────
 class StageManager {
@@ -836,12 +778,8 @@ class StageManager {
             this.idx++;
             this.resetStage();
             
-            // 진화 로직: 스테이지 이동 시 레벨업
-            this.game.player.level = this.idx + 1;
-            const evolutionNames = ['', '아기 고양이', '견습 고양이', '대마법 고양이'];
-            
             const s = this.currentStage();
-            this.game.notify(`🌟 진화! [${evolutionNames[this.game.player.level]}]가 되었습니다!`);
+            this.game.notify(`🌟 ${s.name} - ${s.label} 시작!`);
             this.game.audio.playFanfare();
             this.game.updateHUD();
         } else {
@@ -862,16 +800,19 @@ class StageManager {
     resetStage() {
         this.game.portal = null;
         this.game.stones = this.game.makeStones();
+        this.game.player.solvedInStage = 0; // 스테이지 점수 초기화
         this.game.updateHUD();
-        this.game.updateBackgroundPattern(); // 스테이지 변경 시 배경 패턴 다시 생성
+        this.game.updateBackgroundPattern(); 
         SaveManager.save(this.game.player, this.game.bestCombo, this.idx);
+        this.game.audio.playBGM(this.idx);
     }
     updateUI() {
         if (!this.prevBtn) return;
         if (this.idx > 0) {
             this.prevBtn.classList.remove('hidden');
             const prevLabel = CONFIG.STAGES[this.idx - 1].label;
-            this.prevBtn.textContent = `⬅️ ${prevLabel} 돌아가기`;
+            const textSpan = this.prevBtn.querySelector('.btn-text');
+            if (textSpan) textSpan.textContent = prevLabel;
         } else {
             this.prevBtn.classList.add('hidden');
         }
@@ -972,7 +913,6 @@ class Game {
 
         this.stageManager = new StageManager(this);
         this.shopManager  = new ShopManager(this);
-        this.roomManager  = new RoomManager(this);
         this.quizManager  = new QuizManager(this);
         this.joystick     = null;
 
@@ -999,8 +939,10 @@ class Game {
     }
 
     activateAdminMode() {
-        this.player.gold = 999999;
-        this.notify('✨ 관리자 모드 활성화: 마법 골드가 충전되었습니다!');
+        this.player.gold = 99999999;
+        this.player.solvedInStage = 50;
+        this.spawnPortal();
+        this.notify('✨ 관리자 권한 획득: 무한 골드 및 차원의 문이 개방되었습니다!');
         this.updateHUD();
         this.audio.playFanfare();
         SaveManager.save(this.player, this.bestCombo, this.stageManager.idx);
@@ -1034,6 +976,7 @@ class Game {
                 { id:'cat_level11', path:'images/cat_level11.png' },
                 { id:'cat_level12', path:'images/cat_level12.png' },
                 { id:'cat_level13', path:'images/cat_level13.png' },
+                { id:'cat_level14', path:'images/cat_level14.png' },
                 // 방 관련 에셋
                 { id:'room_bg',     path:'images/room_bg.png'     },
                 { id:'room_bed',    path:'images/room_bed.png'    },
@@ -1044,24 +987,31 @@ class Game {
                 { id:'room_lamp',   path:'images/room_lamp.png'   },
                 { id:'room_plant',  path:'images/room_plant.png'  },
                 { id:'room_window', path:'images/room_window.png' },
+                { id:'room_broom',  path:'images/room_broom.png'  },
+                { id:'room_potion', path:'images/room_potion.png' },
+                { id:'room_magic_crystal', path:'images/room_magic_crystal.png' },
                 { id:'potal',       path:'images/potal.png'       },
             ]);
 
-            console.log("✨ 에셋 로드 완료. 투명화 처리 중...");
-            // 배경 투명화 처리
-            try {
-                this.assets.removeWhiteBg('player_cat', 230);
-                ['cat_level11', 'cat_level12', 'cat_level13', 'cat_player'].forEach(id => {
-                    this.assets.removeWhiteBg(id, 230);
-                });
-                ['room_bed','room_desk','room_rug','room_chair','room_bookshelf','room_lamp','room_plant','room_window','item_boots','pet_owl'].forEach(id => {
-                    this.assets.removeWhiteBg(id, 245);
-                });
-            } catch (e) {
-                console.warn("⚠️ 투명화 처리 중 오류 발생:", e);
+            // 배경 투명화 처리 (태블릿 부하를 줄이기 위해 순차적 처리)
+            const transparentList = [
+                {id: 'player_cat', t: 230},
+                {id: 'cat_level11', t: 230}, {id: 'cat_level12', t: 230}, {id: 'cat_level13', t: 230}, {id: 'cat_level14', t: 230}, {id: 'cat_player', t: 230},
+                {id: 'room_bed', t: 245}, {id: 'room_desk', t: 245}, {id: 'room_rug', t: 245}, {id: 'room_chair', t: 245},
+                {id: 'room_bookshelf', t: 245}, {id: 'room_lamp', t: 245}, {id: 'room_plant', t: 245}, {id: 'room_window', t: 245},
+                {id: 'room_broom', t: 245}, {id: 'room_potion', t: 245}, {id: 'room_magic_crystal', t: 245},
+                {id: 'item_boots', t: 245}, {id: 'pet_owl', t: 245}
+            ];
+
+            for (const item of transparentList) {
+                try {
+                    this.assets.removeWhiteBg(item.id, item.t);
+                    // 대용량 이미지 처리 시 브라우저 멈춤 방지를 위한 미세한 지연
+                    await new Promise(r => setTimeout(r, 20));
+                } catch (e) { console.warn(`Transparency fail: ${item.id}`, e); }
             }
 
-            // 배경 패턴 및 필터 최적화 (태블릿 성능 향상)
+            // 배경 패턴 및 필터 최적화
             this.updateBackgroundPattern();
 
             console.log("✅ 게임 준비 완료!");
@@ -1093,11 +1043,37 @@ class Game {
         const ss  = document.getElementById('start-screen');
         const btn = document.getElementById('start-btn');
         const rst = document.getElementById('reset-btn');
+        const bgmToggleBtn = document.getElementById('bgm-toggle-btn');
+
+        if (bgmToggleBtn) {
+            bgmToggleBtn.onclick = () => {
+                const isEnabled = this.audio.toggleBGM(this.stageManager.idx);
+                const textSpan = bgmToggleBtn.querySelector('.btn-text');
+                if (isEnabled) {
+                    textSpan.textContent = 'BGM 끄기';
+                    bgmToggleBtn.style.opacity = '1';
+                } else {
+                    textSpan.textContent = 'BGM 켜기';
+                    bgmToggleBtn.style.opacity = '0.5';
+                }
+            };
+        }
+
         ss.classList.remove('hidden');
         this.paused = true;
 
         btn.onclick = () => {
             this.audio.resume();
+            if (this.audio.bgmEnabled) this.audio.playBGM(this.stageManager.idx);
+
+            // 전체화면 요청
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(err => console.log(err));
+            } else if (elem.webkitRequestFullscreen) { /* Safari */
+                elem.webkitRequestFullscreen();
+            }
+
             ss.classList.add('hidden');
             this.paused = false;
             this.bindKeys();
@@ -1177,11 +1153,8 @@ class Game {
                 if (this._secretBuffer.length > 20) this._secretBuffer = this._secretBuffer.slice(-20);
             }
 
-            if (e.code === 'KeyS' && !this.quizManager.active && this.roomManager.modal.classList.contains('hidden')) {
+            if (e.code === 'KeyS' && !this.quizManager.active) {
                 this.shopManager.toggle();
-            }
-            if (e.code === 'KeyH' && !this.quizManager.active && this.shopManager.modal.classList.contains('hidden')) {
-                this.roomManager.toggle();
             }
         });
         window.addEventListener('keyup', e => { this.keys[e.code] = false; });
@@ -1204,12 +1177,17 @@ class Game {
         
         if (goldEl) goldEl.textContent = this.player.gold;
         if (stageEl) stageEl.textContent = s.name;
-        if (progEl) progEl.textContent = `${this.player.gold} / ${s.goalGold}G`;
-        if (comboEl) comboEl.textContent = this.bestCombo;
         
-        // 정답 개수는 스테이지 패널에 통합 또는 생략 (필요시 추가)
-        const correctEl = document.getElementById('correct-count');
-        if (correctEl) correctEl.textContent = this.quizManager.totalCorrect;
+        // 정답 수 기반 포탈 안내
+        if (progEl) progEl.textContent = `포탈 개방: 50문제 (현재: ${this.player.solvedInStage})`;
+        
+        // 콤보 패널을 '차원문 개방'으로 활용
+        const comboPanel = document.getElementById('combo-panel');
+        if (comboPanel) {
+            const label = comboPanel.querySelector('.label');
+            if (label) label.textContent = '차원문 개방';
+        }
+        if (comboEl) comboEl.textContent = `${this.player.solvedInStage} / 50`;
         
         this.stageManager.updateUI();
     }
@@ -1241,6 +1219,12 @@ class Game {
         }
 
         this.player.update(dt);
+        
+        // 3단계 마법 효과: 이동할 때 파티클 생성
+        if (this.player.level >= 3 && this.player.moving && Math.random() > 0.6) {
+            this.particles.burst(this.player.x + this.player.w/2, this.player.y + this.player.h - 10, 1);
+        }
+
         this.camera.follow(this.player);
         if (this.pet) this.pet.update(dt);
         if (this.portal) this.portal.update(dt);

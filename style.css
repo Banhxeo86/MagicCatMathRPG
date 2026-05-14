@@ -26,21 +26,28 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    min-height: 100dvh; /* dynamic viewport 대응 */
     overflow: hidden;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 /* ── 캔버스 컨테이너 ── */
 #game-container {
     position: relative;
-    width: 1024px;
-    height: 768px;
-    border-radius: 16px;
-    border: 3px solid var(--primary);
-    box-shadow: 0 0 40px rgba(124,92,252,0.5), var(--shadow);
+    width: 100vw;
+    height: 100vh;
     overflow: hidden;
+    background: #0d0820;
 }
 
-#gameCanvas { display: block; }
+#gameCanvas { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: contain;
+    display: block; 
+}
+
+
 
 /* ── Magic HUD ── */
 #hud {
@@ -85,7 +92,7 @@ body {
 }
 
 .stat-item .label {
-    font-family: 'Cinzel', serif;
+    font-family: 'Orbitron', 'Noto Sans KR', sans-serif;
     font-size: 0.65rem;
     color: var(--primary-light);
     letter-spacing: 1px;
@@ -214,7 +221,7 @@ body {
 /* ── 알림 배너 ── */
 #notification {
     position: absolute;
-    top: 60px;
+    top: 80px;
     left: 50%;
     transform: translateX(-50%);
     background: linear-gradient(135deg, var(--primary), #a855f7);
@@ -223,9 +230,10 @@ body {
     font-weight: 700;
     font-size: 1rem;
     box-shadow: 0 4px 20px rgba(124,92,252,0.6);
-    z-index: 1000; /* 알림이 최상단에 오도록 */
+    z-index: 1000;
     transition: opacity 0.4s;
     white-space: nowrap;
+    max-width: 90%;
 }
 
 #notification.hidden { opacity: 0; pointer-events: none; }
@@ -416,10 +424,32 @@ body {
 .shop-footer {
     font-weight: 700;
     color: var(--accent);
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Orbitron', 'Noto Sans KR', sans-serif;
     font-size: 0.95rem;
     border-top: 1px solid var(--glass-border);
     padding-top: 12px;
+    text-shadow: none; /* 음영 제거 */
+}
+
+.buy-btn {
+    background: linear-gradient(135deg, var(--primary), #a855f7);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-family: 'Orbitron', 'Noto Sans KR', sans-serif;
+    font-size: 0.8rem;
+    font-weight: bold;
+    padding: 6px 12px;
+    margin-top: 8px;
+    cursor: pointer;
+    text-shadow: none; /* 음영 제거 */
+}
+
+.buy-btn.owned {
+    background: transparent;
+    border: 1px solid var(--success);
+    color: var(--success);
+    cursor: default;
 }
 
 /* ── 마이룸 카드 ── */
@@ -619,14 +649,11 @@ body {
     #game-container {
         width: 100vw;
         height: 100vh;
-        border-radius: 0;
-        border: none;
     }
 
     #gameCanvas {
         width: 100%;
         height: 100%;
-        object-fit: contain;
     }
 
     #hud {
@@ -638,6 +665,24 @@ body {
     #hud-left, #hud-right {
         gap: 4px;
     }
+
+    .stat-item {
+        min-width: 90px;
+        height: 48px;
+        padding: 5px 10px;
+    }
+    .stat-item .label { font-size: 0.55rem; }
+    .stat-item .value { font-size: 0.9rem; }
+    .stat-item .sub-value { font-size: 0.6rem; }
+    .stat-item .icon { width: 22px; height: 22px; top: -5px; left: -5px; font-size: 0.75rem; }
+
+    .magic-btn {
+        width: 70px;
+        height: 42px;
+        border-radius: 10px;
+    }
+    .magic-btn .icon { font-size: 1rem; }
+    .magic-btn .btn-text { font-size: 0.65rem; }
 
     .modal-card {
         width: 90% !important;
@@ -703,6 +748,21 @@ body {
     #hud-right {
         align-self: flex-end;
     }
+    .stat-item {
+        min-width: 70px;
+        height: 40px;
+        padding: 4px 6px;
+    }
+    .stat-item .value { font-size: 0.8rem; }
+    .stat-item .sub-value { font-size: 0.5rem; }
+    
+    .magic-btn {
+        width: 60px;
+        height: 38px;
+    }
+    .magic-btn .icon { font-size: 0.85rem; }
+    .magic-btn .btn-text { font-size: 0.55rem; }
+
     .hud-pill {
         padding: 3px 8px;
         font-size: 0.65rem;
