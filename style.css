@@ -590,8 +590,8 @@ body {
 
 #joystick-zone {
     position: absolute;
-    bottom: 30px;
-    left: 30px;
+    bottom: 60px; /* 더 위로 배치 */
+    left: 40px;   /* 살짝 안쪽으로 */
     width: 150px;
     height: 150px;
     pointer-events: auto;

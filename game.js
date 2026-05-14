@@ -231,9 +231,14 @@ class Player extends Entity {
         ctx.translate(cx, cy);
         ctx.scale(breathe, breathe);
         
-        // 2. 캐릭터 외곽 광채 (마법 느낌)
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = 'rgba(167,139,250,0.5)';
+        // shadowBlur 제거 (태블릿 성능 저하의 주범)
+        // 대신 캐릭터 뒤에 아주 연한 보라색 원을 그려 마법 느낌 유지
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = '#a78bfa';
+        ctx.beginPath();
+        ctx.arc(0, 0, this.w/2 + 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
         
         ctx.drawImage(
             sheet,
@@ -993,9 +998,12 @@ class Game {
     }
 
     handleResize() {
-        const isMobile = window.innerWidth <= 900;
+        // 태블릿 가로모드 및 다양한 해상도 대응 (1366px까지 확대)
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        const isMobileOrTablet = window.innerWidth <= 1366 || isTouchDevice;
+        
         const mobileControls = document.getElementById('mobile-controls');
-        if (isMobile) {
+        if (isMobileOrTablet) {
             mobileControls.classList.remove('hidden');
             if (!this.joystick) this.joystick = new VirtualJoystick();
         } else {
