@@ -341,11 +341,13 @@ class Portal extends Entity {
 class AssetManager {
     constructor() { this.cache = {}; }
     async preload(list) {
+        const timeout = 15000; // 15초 타임아웃
         await Promise.all(list.map(({id, path}) =>
             new Promise((res, rej) => {
                 const img = new Image();
-                img.onload  = () => { this.cache[id] = img; res(); };
-                img.onerror = () => rej(`Failed: ${path}`);
+                const timer = setTimeout(() => rej(`Timeout: ${path}`), timeout);
+                img.onload  = () => { clearTimeout(timer); this.cache[id] = img; res(); };
+                img.onerror = () => { clearTimeout(timer); rej(`Failed: ${path}`); };
                 img.src = path;
             })
         ));
@@ -808,7 +810,7 @@ class StageManager {
         this.game = game;
         this.idx = 0;
         this.prevBtn = document.getElementById('prev-stage-btn');
-        this.prevBtn.onclick = () => this.prevStage();
+        if (this.prevBtn) this.prevBtn.onclick = () => this.prevStage();
     }
     currentStage() { return CONFIG.STAGES[this.idx]; }
     checkGoal() {
@@ -851,6 +853,7 @@ class StageManager {
         SaveManager.save(this.game.player, this.game.bestCombo, this.idx);
     }
     updateUI() {
+        if (!this.prevBtn) return;
         if (this.idx > 0) {
             this.prevBtn.classList.remove('hidden');
             const prevLabel = CONFIG.STAGES[this.idx - 1].label;
@@ -1138,11 +1141,20 @@ class Game {
 
     updateHUD() {
         const s = this.stageManager.currentStage();
-        document.getElementById('gold-display').textContent    = this.player.gold;
-        document.getElementById('stage-display').textContent   = s.name;
-        document.getElementById('progress-display').textContent = `${this.player.gold} / ${s.goalGold}G`;
-        document.getElementById('best-combo-display').textContent = this.bestCombo;
-        document.getElementById('correct-count').textContent = this.quizManager.totalCorrect;
+        const goldEl = document.getElementById('gold-display');
+        const stageEl = document.getElementById('stage-display');
+        const progEl = document.getElementById('progress-display');
+        const comboEl = document.getElementById('best-combo-display');
+        
+        if (goldEl) goldEl.textContent = this.player.gold;
+        if (stageEl) stageEl.textContent = s.name;
+        if (progEl) progEl.textContent = `${this.player.gold} / ${s.goalGold}G`;
+        if (comboEl) comboEl.textContent = this.bestCombo;
+        
+        // 정답 개수는 스테이지 패널에 통합 또는 생략 (필요시 추가)
+        const correctEl = document.getElementById('correct-count');
+        if (correctEl) correctEl.textContent = this.quizManager.totalCorrect;
+        
         this.stageManager.updateUI();
     }
 
