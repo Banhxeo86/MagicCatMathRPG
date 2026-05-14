@@ -533,42 +533,42 @@ class ShopManager {
             {
                 id:'room_rug', name:'폭신한 카페트', price:500, imgId:'room_rug',
                 desc:'방 바닥을 따뜻하게 꾸며줍니다.', type:'furniture',
-                pos: { x: '50%', y: '80%', w: 320 }
+                pos: { x: '50%', y: '85%', w: 450 }
             },
             {
                 id:'room_bed', name:'마법 침대', price:1500, imgId:'room_bed',
                 desc:'고양이가 편히 쉴 수 있는 침대.', type:'furniture',
-                pos: { x: '25%', y: '70%', w: 160 }
+                pos: { x: '25%', y: '72%', w: 220 }
             },
             {
                 id:'room_desk', name:'공부 책상', price:2500, imgId:'room_desk',
                 desc:'수학 공부를 위한 튼튼한 책상.', type:'furniture',
-                pos: { x: '75%', y: '65%', w: 140 }
+                pos: { x: '78%', y: '75%', w: 180 }
             },
             {
                 id:'room_chair', name:'마법 의자', price:1200, imgId:'room_chair',
                 desc:'책상과 잘 어울리는 편한 의자.', type:'furniture',
-                pos: { x: '68%', y: '75%', w: 80 }
+                pos: { x: '65%', y: '82%', w: 90 }
             },
             {
                 id:'room_bookshelf', name:'마법 책장', price:4000, imgId:'room_bookshelf',
                 desc:'지혜가 담긴 책이 가득합니다.', type:'furniture',
-                pos: { x: '88%', y: '45%', w: 120 }
+                pos: { x: '12%', y: '45%', w: 120 }
             },
             {
                 id:'room_window', name:'하늘 창문', price:3500, imgId:'room_window',
                 desc:'마법 세계의 풍경이 보입니다.', type:'furniture',
-                pos: { x: '50%', y: '35%', w: 160 }
+                pos: { x: '50%', y: '30%', w: 200 }
             },
             {
                 id:'room_lamp', name:'크리스탈 조명', price:1800, imgId:'room_lamp',
                 desc:'방 안을 환하게 밝혀줍니다.', type:'furniture',
-                pos: { x: '82%', y: '58%', w: 60 }
+                pos: { x: '85%', y: '50%', w: 70 }
             },
             {
                 id:'room_plant', name:'생명의 화분', price:1000, imgId:'room_plant',
                 desc:'방에 생기를 불어넣는 식물.', type:'furniture',
-                pos: { x: '18%', y: '48%', w: 80 }
+                pos: { x: '10%', y: '80%', w: 80 }
             }
         ];
     }

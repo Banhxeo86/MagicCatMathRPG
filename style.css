@@ -371,12 +371,12 @@ body {
 
 #roomCatCanvas {
     position: absolute;
-    bottom: 20%;
+    bottom: 15%;
     left: 50%;
     transform: translateX(-50%);
     pointer-events: none;
-    width: 30cqw;
-    height: 30cqw;
+    width: 24cqw;
+    height: 24cqw;
 }
 
 .room-footer {
