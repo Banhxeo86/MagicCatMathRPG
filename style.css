@@ -140,44 +140,42 @@ body {
 
 /* CONTROLS BUTTONS */
 .magic-btn {
-    width: 64px;
-    height: 64px;
-    background: #2a214d;
+    width: 100px;
+    height: 54px;
+    background: rgba(42, 33, 77, 0.85);
     border: 2px solid #8b7355;
-    border-radius: 12px;
+    border-radius: 14px;
     color: var(--accent);
     cursor: pointer;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 1px;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    backdrop-filter: blur(4px);
 }
 
 .magic-btn:hover {
-    transform: translateY(-4px) scale(1.05);
+    transform: translateY(-3px);
     border-color: var(--accent);
-    box-shadow: 0 8px 20px rgba(255,209,102,0.3);
+    box-shadow: 0 6px 18px rgba(255,209,102,0.3);
     background: #352a61;
 }
 
-.magic-btn .icon { font-size: 1.5rem; }
+.magic-btn .icon { font-size: 1.2rem; }
 .magic-btn .btn-text {
-    font-family: 'Cinzel', serif;
-    font-size: 0.55rem;
-    font-weight: bold;
+    font-size: 0.75rem;
+    font-weight: 700;
 }
 
-.close-btn {
-    width: 44px;
-    height: 44px;
-    background: rgba(239, 71, 111, 0.3);
+.exit-btn {
     border-color: var(--danger);
-    border-radius: 50%;
+    color: var(--danger);
+    background: rgba(40, 20, 30, 0.85);
 }
-.close-btn .icon { font-size: 1.2rem; color: #fff; }
+.exit-btn:hover { border-color: #ff6b81; background: #502030; }
 
 /* ── Housing Draggable Styles ── */
 .room-furniture {
