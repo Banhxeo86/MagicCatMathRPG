@@ -6,26 +6,45 @@
     <title>마법 고양이 수학 RPG</title>
     <meta name="description" content="마법 고양이와 함께 떠나는 수학 RPG 어드벤처!">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=MedievalSharp&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="game-container">
         <canvas id="gameCanvas" width="1024" height="768"></canvas>
 
-        <!-- HUD Overlay -->
+        <!-- Magic HUD Overlay -->
         <div id="hud">
-            <div id="hud-left">
-                <div class="hud-pill gold-pill">💰 <span id="gold-display">0</span>G</div>
-                <div class="hud-pill stage-pill">🗺️ <span id="stage-display">Stage 1</span></div>
-                <div class="hud-pill correct-pill">✅ 정답: <span id="correct-count">0</span></div>
-                <div class="hud-pill progress-pill">🎯 목표: <span id="progress-display">0 / 2000G</span></div>
-                <button id="open-shop-btn" class="hud-pill shop-pill">🏪 상점</button>
-                <button id="open-room" class="hud-pill room-pill">🏠 마이룸</button>
-                <button id="prev-stage-btn" class="hud-pill prev-pill hidden">⬅️ 이전 단계로</button>
+            <!-- Left: Stats Panel -->
+            <div id="stats-panel">
+                <div class="stat-item scroll-bg" id="stage-panel">
+                    <span class="label">📜 STAGE</span>
+                    <span id="stage-display" class="value">Stage 1</span>
+                    <span id="progress-display" class="sub-value">0 / 2000G</span>
+                </div>
+                <div class="stat-item potion-bg" id="gold-panel">
+                    <span class="icon">🧪</span>
+                    <span id="gold-display" class="value">0</span><span class="unit">G</span>
+                </div>
+                <div class="stat-item medal-bg" id="combo-panel">
+                    <span class="icon">🌟</span>
+                    <span class="label">COMBO</span>
+                    <span id="best-combo-display" class="value">0</span>
+                </div>
             </div>
-            <div id="hud-right">
-                <div class="hud-pill combo-pill">🏆 최고콤보 <span id="best-combo-display">0</span></div>
-                <button id="exit-btn" class="hud-pill exit-pill">🚪 끝내기</button>
+
+            <!-- Right: Controls Panel -->
+            <div id="controls-panel">
+                <button id="open-shop-btn" class="magic-btn shop-btn" title="상점">
+                    <span class="icon">📖</span>
+                    <span class="btn-text">Shop</span>
+                </button>
+                <button id="open-room" class="magic-btn room-btn" title="마이룸">
+                    <span class="icon">🏰</span>
+                    <span class="btn-text">My Room</span>
+                </button>
+                <button id="exit-btn" class="magic-btn close-btn" title="끝내기">
+                    <span class="icon">✕</span>
+                </button>
             </div>
         </div>
 

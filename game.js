@@ -19,9 +19,9 @@ const CONFIG = {
     BASE_SPEED: 240, // Pixels per second (60fps * 4px)
     STONE_COUNT: 40,
     STAGES: [
-        { id:1, name:'Stage 1', goalGold:2000,  mathRange:10, filter:'none',                                          label:'마법 초원', maxQ: 3 },
-        { id:2, name:'Stage 2', goalGold:7000,  mathRange:20, filter:'hue-rotate(200deg) brightness(0.65) saturate(2)', label:'신비한 밤', maxQ: 4 },
-        { id:3, name:'Stage 3', goalGold:15000, mathRange:30, filter:'sepia(0.7) saturate(2.5) hue-rotate(320deg)',    label:'붉은 노을', maxQ: 5 },
+        { id:1, name:'Stage 1', goalGold:2000,  mathRange:10, filter:'none',                                          label:'마법 초원', maxQ: 3, baseGold: 50 },
+        { id:2, name:'Stage 2', goalGold:7000,  mathRange:20, filter:'hue-rotate(200deg) brightness(0.65) saturate(2)', label:'신비한 밤', maxQ: 4, baseGold: 150 },
+        { id:3, name:'Stage 3', goalGold:15000, mathRange:30, filter:'sepia(0.7) saturate(2.5) hue-rotate(320deg)',    label:'붉은 노을', maxQ: 5, baseGold: 400 },
     ]
 };
 
@@ -68,7 +68,8 @@ class SaveManager {
             gold: player.gold,
             items: [...player.items],
             bestCombo,
-            stageIdx
+            stageIdx,
+            furniturePositions: player.furniturePositions
         }));
     }
     static load() {
@@ -146,6 +147,8 @@ class Player extends Entity {
         this.gold   = 0;
         this.items  = new Set();
         this.hasOwl = false;
+        this.owlLevel = 0;
+        this.furniturePositions = {}; // itemId -> {x, y}
         this.vx = 0; this.vy = 0;
         // 애니메이션용
         this.facing = 1;   // 1: 오른쪽, -1: 왼쪽
@@ -179,7 +182,12 @@ class Player extends Entity {
         this.speed = Math.round(CONFIG.BASE_SPEED * multiplier);
     }
     addGold(amt) {
-        const earned = amt * (this.hasOwl ? 2 : 1);
+        let bonus = 1;
+        if (this.owlLevel === 1) bonus = 1.2;
+        else if (this.owlLevel === 2) bonus = 1.5;
+        else if (this.owlLevel === 3) bonus = 2.0;
+
+        const earned = Math.round(amt * bonus);
         this.gold += earned;
         return earned;
     }
@@ -452,7 +460,12 @@ class QuizManager {
             this.qCount++;
             this.totalCorrect++;
             if (this.combo > this.game.bestCombo) this.game.bestCombo = this.combo;
-            const earned = this.game.player.addGold(10 * this.combo);
+
+            const stage = this.game.stageManager.currentStage();
+            const base = stage.baseGold || 50;
+            // 콤보 보너스: 기본금의 10%씩 복리/가산 (여기서는 가산: 100%, 110%, 120%...)
+            const earned = this.game.player.addGold(Math.round(base * (1 + (this.combo - 1) * 0.1)));
+
             this.fbEl.style.color = '#06d6a0';
             this.fbEl.textContent = `정답! +${earned}G 🎉`;
             this.game.audio.playCorrect();
@@ -470,7 +483,7 @@ class QuizManager {
         } else {
             this.combo = 0;
             const stageIdx = this.game.stageManager.idx;
-            const penalty = 30 + (stageIdx * 20); // 스테이지가 높을수록 페널티 증가
+            const penalty = 50 + (stageIdx * 50); // 스테이지가 높을수록 페널티 증가
             this.game.player.gold = Math.max(0, this.game.player.gold - penalty);
             this.fbEl.style.color = '#ef476f';
             this.fbEl.textContent = `오답... -${penalty}G 😢 (광맥 이탈)`;
@@ -522,13 +535,19 @@ class ShopManager {
                 effect: p => { /* dynamic speed calc in Player.update */ }
             },
             {
-                id:'owl', name:'황금 부엉이', price:3000, imgId:'pet_owl',
-                desc:'골드 획득 2배! 옆에서 따라다닙니다.',
-                effect: p => {
-                    p.hasOwl = true;
-                    this.game.pet = new Pet(p);
-                    this.game.notify('황금 부엉이가 합류했습니다! 🦉 골드 2배 효과 활성화!');
-                }
+                id:'owl_lv1', name:'초보 부엉이 (Lv.1)', price:1500, imgId:'pet_owl',
+                desc:'골드 획득 +20% 보너스!',
+                effect: p => { p.hasOwl = true; p.owlLevel = 1; this.game.pet = new Pet(p); }
+            },
+            {
+                id:'owl_lv2', name:'숙련 부엉이 (Lv.2)', price:4000, imgId:'pet_owl',
+                desc:'골드 획득 +50% 보너스!', requires:'owl_lv1',
+                effect: p => { p.owlLevel = 2; }
+            },
+            {
+                id:'owl_lv3', name:'대마법 부엉이 (Lv.3)', price:10000, imgId:'pet_owl',
+                desc:'골드 획득 +100% 보너스!', requires:'owl_lv2',
+                effect: p => { p.owlLevel = 3; }
             },
             {
                 id:'room_rug', name:'폭신한 카페트', price:500, imgId:'room_rug',
@@ -633,7 +652,7 @@ class ShopManager {
     }
 }
 
-// ── RoomManager ───────────────────────────────
+// ── RoomManager (Advanced Housing) ────────────────
 class RoomManager {
     constructor(game) {
         this.game   = game;
@@ -641,9 +660,23 @@ class RoomManager {
         this.layer  = document.getElementById('room-items-layer');
         this.canvas = document.getElementById('roomCatCanvas');
         this.ctx    = this.canvas.getContext('2d');
+
+        // 가구별 기본 설정 (zBase: 레이어 기초값, w: 기준 너비)
+        this.furnitureConfig = {
+            'room_rug':       { zBase: 1,  w: 480 },
+            'room_window':    { zBase: 2,  w: 180 },
+            'room_bookshelf': { zBase: 5,  w: 120 },
+            'room_bed':       { zBase: 10, w: 220 },
+            'room_desk':      { zBase: 10, w: 180 },
+            'room_chair':     { zBase: 15, w: 80 },
+            'room_lamp':      { zBase: 15, w: 60 },
+            'room_plant':     { zBase: 15, w: 80 }
+        };
+
         document.getElementById('open-room').onclick  = () => this.toggle();
         document.getElementById('close-room').onclick = () => this.toggle();
     }
+
     toggle() {
         const wasHidden = this.modal.classList.contains('hidden');
         this.modal.classList.toggle('hidden');
@@ -651,32 +684,101 @@ class RoomManager {
         if (wasHidden) { this.render(); this.startAnimation(); }
         else { this.stopAnimation(); }
     }
+
     render() {
         this.layer.innerHTML = '';
-        this.game.shopManager.items.forEach(item => {
-            if (item.type === 'furniture' && this.game.player.items.has(item.id)) {
-                const imgSrc = this.game.assets.getSrc(item.imgId);
-                if (imgSrc) {
-                    const el = document.createElement('img');
-                    el.src = imgSrc;
-                    el.className = 'room-furniture';
-                    el.style.left = item.pos.x;
-                    el.style.top = item.pos.y;
-                    // 600px 기준 너비를 cqw(Container Query Width)로 변환하여 반응형 대응
-                    const widthCqw = (item.pos.w / 600 * 100).toFixed(2);
-                    el.style.width = widthCqw + 'cqw';
-                    this.layer.appendChild(el);
-                }
-            }
+        const purchased = this.game.shopManager.items.filter(item => 
+            item.type === 'furniture' && this.game.player.items.has(item.id)
+        );
+
+        purchased.forEach(item => {
+            const imgSrc = this.game.assets.getSrc(item.imgId);
+            if (!imgSrc) return;
+
+            const cfg = this.furnitureConfig[item.id] || { zBase: 10, w: 100 };
+            const pos = this.game.player.furniturePositions[item.id] || item.pos; // 저장된 위치 또는 기본값
+            
+            // X, Y 좌표가 문자열(%)인 경우 숫자로 변환
+            let xPct = typeof pos.x === 'string' ? parseFloat(pos.x) : pos.x;
+            let yPct = typeof pos.y === 'string' ? parseFloat(pos.y) : pos.y;
+
+            const el = document.createElement('div');
+            el.className = 'room-furniture';
+            el.style.left = xPct + '%';
+            el.style.top = yPct + '%';
+            el.style.width = cfg.w + 'px'; // 고정 픽셀 스케일 (Container Query가 대신 처리)
+            el.style.zIndex = Math.floor(cfg.zBase * 10 + yPct);
+            
+            el.innerHTML = `<img src="${imgSrc}" style="width:100%; pointer-events:none;">`;
+            this.layer.appendChild(el);
+
+            this.makeDraggable(el, item.id);
         });
     }
-    startAnimation() {
-        this.animActive = true;
-        this.loop();
+
+    makeDraggable(el, itemId) {
+        let isDragging = false;
+        let startX, startY;
+
+        const onStart = (e) => {
+            isDragging = true;
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            const rect = el.getBoundingClientRect();
+            startX = clientX - rect.left;
+            startY = clientY - rect.top;
+            
+            el.classList.add('dragging');
+            if (e.type === 'mousedown') e.preventDefault();
+        };
+
+        const onMove = (e) => {
+            if (!isDragging) return;
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            const containerRect = this.layer.parentElement.getBoundingClientRect();
+            
+            // Anchor point: Bottom-Center (transform: translate(-50%, -100%))
+            let newX = clientX - containerRect.left - startX + (el.offsetWidth / 2);
+            let newY = clientY - containerRect.top - startY + el.offsetHeight;
+
+            let xPct = (newX / containerRect.width) * 100;
+            let yPct = (newY / containerRect.height) * 100;
+
+            // Bounds
+            xPct = Math.max(0, Math.min(xPct, 100));
+            yPct = Math.max(20, Math.min(yPct, 100)); // 벽면 상단 제한
+
+            el.style.left = xPct + '%';
+            el.style.top = yPct + '%';
+            
+            const cfg = this.furnitureConfig[itemId] || { zBase: 10 };
+            el.style.zIndex = Math.floor(cfg.zBase * 10 + yPct);
+            
+            this.game.player.furniturePositions[itemId] = { x: xPct, y: yPct };
+        };
+
+        const onEnd = () => {
+            if (isDragging) {
+                isDragging = false;
+                el.classList.remove('dragging');
+                SaveManager.save(this.game.player, this.game.bestCombo, this.game.stageManager.idx);
+            }
+        };
+
+        el.addEventListener('mousedown', onStart);
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onEnd);
+        
+        el.addEventListener('touchstart', onStart, { passive: false });
+        window.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('touchend', onEnd);
     }
-    stopAnimation() {
-        this.animActive = false;
-    }
+
+    startAnimation() { this.animActive = true; this.loop(); }
+    stopAnimation()  { this.animActive = false; }
     loop() {
         if (!this.animActive) return;
         this.drawCat();
@@ -686,25 +788,16 @@ class RoomManager {
         const ctx = this.ctx;
         const sheet = this.game.assets.get('cat_player');
         if (!sheet) return;
-
         ctx.clearRect(0,0, this.canvas.width, this.canvas.height);
-        
         const frameW = Math.floor(sheet.width / 4);
         const frameH = Math.floor(sheet.height / 4);
-        
         const tick = Date.now() / 100;
         const frameIdx = Math.floor(tick / 2) % 4;
         const breathe = 1 + Math.sin(tick * 0.5) * 0.03;
-
         ctx.save();
         ctx.translate(this.canvas.width/2, this.canvas.height/2);
         ctx.scale(breathe, breathe);
-        ctx.drawImage(
-            sheet,
-            frameIdx * frameW, 0, // 0: Down/Idle
-            frameW, frameH,
-            -64, -64, 128, 128
-        );
+        ctx.drawImage(sheet, frameIdx * frameW, 0, frameW, frameH, -64, -64, 128, 128);
         ctx.restore();
     }
 }

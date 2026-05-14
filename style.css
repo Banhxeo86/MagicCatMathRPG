@@ -42,82 +42,163 @@ body {
 
 #gameCanvas { display: block; }
 
-/* ── HUD ── */
+/* ── Magic HUD ── */
 #hud {
     position: absolute;
-    top: 12px;
-    left: 12px;
-    right: 12px;
+    top: 15px;
+    left: 15px;
+    right: 15px;
     display: flex;
     justify-content: space-between;
     pointer-events: none;
-    gap: 8px;
+    z-index: 100;
 }
 
-#hud-left, #hud-right {
+#stats-panel, #controls-panel {
     display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    pointer-events: auto;
+}
+
+/* STATS ITEMS */
+.stat-item {
+    position: relative;
+    padding: 8px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 120px;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+}
+
+/* Scroll Design for Stage */
+.scroll-bg {
+    background: #e2c08d;
+    background-image: linear-gradient(to right, #c19a6b 0%, #e2c08d 10%, #e2c08d 90%, #c19a6b 100%);
+    border-top: 3px solid #8b5a2b;
+    border-bottom: 3px solid #8b5a2b;
+    border-radius: 4px;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+    min-width: 160px;
+}
+.scroll-bg::before, .scroll-bg::after {
+    content: '';
+    position: absolute;
+    left: -10px;
+    width: 20px;
+    height: 105%;
+    background: #8b5a2b;
+    border-radius: 4px;
+    top: -2.5%;
+}
+.scroll-bg::after { left: auto; right: -10px; }
+
+/* Potion Design for Gold */
+.potion-bg {
+    background: rgba(26,18,53,0.8);
+    border: 2px solid #ffd166;
+    border-radius: 15px 15px 25px 25px;
+    box-shadow: 0 0 15px rgba(255,209,102,0.4);
+    flex-direction: row;
+    align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
 }
 
-.hud-pill {
-    background: rgba(26,18,53,0.75);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    padding: 6px 14px;
-    font-size: 0.85rem;
+/* Medal Design for Combo */
+.medal-bg {
+    background: rgba(124,92,252,0.25);
+    border: 2px solid #a78bfa;
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 15px rgba(167,139,250,0.3);
+}
+
+.stat-item .label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    color: #5d4037;
+    margin-bottom: -2px;
+}
+.potion-bg .label, .medal-bg .label { color: var(--primary-light); }
+
+.stat-item .value {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.1rem;
     font-weight: 700;
-    white-space: nowrap;
+    color: #2d1b6e;
+    text-shadow: 0 1px 1px rgba(255,255,255,0.3);
+}
+.potion-bg .value { color: var(--accent); text-shadow: 0 0 8px rgba(255,209,102,0.6); }
+.medal-bg .value { color: #fff; text-shadow: 0 0 8px rgba(167,139,250,0.8); }
+
+.stat-item .sub-value {
+    font-size: 0.7rem;
+    color: #795548;
+    font-weight: bold;
 }
 
-.gold-pill    { color: var(--accent); font-family: 'Orbitron', sans-serif; }
-.stage-pill   { color: var(--primary-light); }
-.correct-pill { color: #a29bfe; }
-.progress-pill{ color: #81ecec; }
-.combo-pill   { color: #fdcb6e; font-family: 'Orbitron', sans-serif; }
-.exit-pill    { background: rgba(239, 71, 111, 0.4); color: white; cursor: pointer; pointer-events: auto; }
-
-.shop-pill {
-    background: linear-gradient(135deg, var(--primary), #a855f7);
-    color: white;
+/* CONTROLS BUTTONS */
+.magic-btn {
+    width: 64px;
+    height: 64px;
+    background: #2a214d;
+    border: 2px solid #8b7355;
+    border-radius: 12px;
+    color: var(--accent);
     cursor: pointer;
-    pointer-events: auto;
-    border: none;
-    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
-.shop-pill:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 15px rgba(124,92,252,0.5);
+.magic-btn:hover {
+    transform: translateY(-4px) scale(1.05);
+    border-color: var(--accent);
+    box-shadow: 0 8px 20px rgba(255,209,102,0.3);
+    background: #352a61;
 }
 
-.room-pill {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    color: white;
-    cursor: pointer;
-    pointer-events: auto;
-    border: none;
-    transition: transform 0.2s, box-shadow 0.2s;
+.magic-btn .icon { font-size: 1.5rem; }
+.magic-btn .btn-text {
+    font-family: 'Cinzel', serif;
+    font-size: 0.55rem;
+    font-weight: bold;
 }
 
-.room-pill:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 15px rgba(245,158,11,0.5);
+.close-btn {
+    width: 44px;
+    height: 44px;
+    background: rgba(239, 71, 111, 0.3);
+    border-color: var(--danger);
+    border-radius: 50%;
+}
+.close-btn .icon { font-size: 1.2rem; color: #fff; }
+
+/* ── Housing Draggable Styles ── */
+.room-furniture {
+    position: absolute;
+    transform: translate(-50%, -100%); /* Bottom-center anchor */
+    cursor: grab;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.2s;
+    user-select: none;
+    -webkit-user-drag: none;
 }
 
-.prev-pill {
-    background: linear-gradient(135deg, #64748b, #475569);
-    color: white;
-    cursor: pointer;
-    pointer-events: auto;
-    border: none;
-    transition: transform 0.2s, box-shadow 0.2s;
+.room-furniture:hover {
+    filter: brightness(1.1) drop-shadow(0 0 10px rgba(255,209,102,0.4));
+    transform: translate(-50%, -105%) scale(1.03);
 }
 
-.prev-pill:hover {
-    transform: scale(1.05);
-    box-shadow: 0 0 15px rgba(100,116,139,0.5);
+.room-furniture.dragging {
+    cursor: grabbing;
+    opacity: 0.8;
+    transform: translate(-50%, -105%) scale(1.1);
+    z-index: 9999 !important;
 }
 
 /* ── 알림 배너 ── */
