@@ -857,6 +857,8 @@ class Game {
         this.paused  = false;
         this.keys    = {};
         this._bgPat  = null; // 배경 패턴 캐시
+        this._secretCode = 'catmaster';
+        this._secretBuffer = '';
 
         this.stageManager = new StageManager(this);
         this.shopManager  = new ShopManager(this);
@@ -881,6 +883,14 @@ class Game {
     goToStartScreen() {
         this.paused = true;
         document.getElementById('start-screen').classList.remove('hidden');
+    }
+
+    activateAdminMode() {
+        this.player.gold = 999999;
+        this.notify('✨ 관리자 모드 활성화: 마법 골드가 충전되었습니다!');
+        this.updateHUD();
+        this.audio.playFanfare();
+        SaveManager.save(this.player, this.bestCombo, this.stageManager.idx);
     }
 
     handleResize() {
@@ -1004,6 +1014,17 @@ class Game {
     bindKeys() {
         window.addEventListener('keydown', e => {
             this.keys[e.code] = true;
+
+            // 비밀 코드 체크 (catmaster)
+            if (e.key && e.key.length === 1) {
+                this._secretBuffer += e.key.toLowerCase();
+                if (this._secretBuffer.endsWith(this._secretCode)) {
+                    this.activateAdminMode();
+                    this._secretBuffer = '';
+                }
+                if (this._secretBuffer.length > 20) this._secretBuffer = this._secretBuffer.slice(-20);
+            }
+
             if (e.code === 'KeyS' && !this.quizManager.active && this.roomManager.modal.classList.contains('hidden')) {
                 this.shopManager.toggle();
             }
