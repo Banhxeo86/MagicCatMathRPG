@@ -663,16 +663,16 @@ class RoomManager {
         this.canvas = document.getElementById('roomCatCanvas');
         this.ctx    = this.canvas.getContext('2d');
 
-        // 가구별 기본 설정 (zBase: 레이어 기초값, w: 기준 너비)
+        // 가구별 세부 설정 (w: 너비, zBase: 기본 깊이, transform: 원근감 보정)
         this.furnitureConfig = {
-            'room_rug':       { zBase: 1,  w: 480 },
-            'room_window':    { zBase: 2,  w: 180 },
-            'room_bookshelf': { zBase: 5,  w: 120 },
-            'room_bed':       { zBase: 10, w: 220 },
-            'room_desk':      { zBase: 10, w: 180 },
-            'room_chair':     { zBase: 15, w: 80 },
-            'room_lamp':      { zBase: 15, w: 60 },
-            'room_plant':     { zBase: 15, w: 80 }
+            'room_rug':       { zBase: 1,  w: 380, transform: 'scaleY(0.5)', borderRadius: '50%' }, // 타원형 카페트
+            'room_window':    { zBase: 2,  w: 130, transform: 'perspective(500px) rotateX(10deg)', isWall: true }, // 벽면에 밀착
+            'room_bookshelf': { zBase: 5,  w: 110, transform: 'skewY(-2deg)' }, // 벽면 각도 조절
+            'room_bed':       { zBase: 10, w: 180 },
+            'room_desk':      { zBase: 10, w: 140 },
+            'room_chair':     { zBase: 15, w: 75 },
+            'room_lamp':      { zBase: 15, w: 55 },
+            'room_plant':     { zBase: 15, w: 75, transform: 'translateY(5px)' } // 바닥 밀착 보정
         };
 
         document.getElementById('open-room').onclick  = () => this.toggle();
@@ -708,10 +708,18 @@ class RoomManager {
             el.className = 'room-furniture';
             el.style.left = xPct + '%';
             el.style.top = yPct + '%';
-            el.style.width = cfg.w + 'px'; // 고정 픽셀 스케일 (Container Query가 대신 처리)
+            el.style.width = cfg.w + 'px';
             el.style.zIndex = Math.floor(cfg.zBase * 10 + yPct);
             
-            el.innerHTML = `<img src="${imgSrc}" style="width:100%; pointer-events:none;">`;
+            // 이미지에 변형 적용
+            const imgEl = document.createElement('img');
+            imgEl.src = imgSrc;
+            imgEl.style.width = '100%';
+            imgEl.style.pointerEvents = 'none';
+            if (cfg.transform) imgEl.style.transform = cfg.transform;
+            if (cfg.borderRadius) imgEl.style.borderRadius = cfg.borderRadius;
+            
+            el.appendChild(imgEl);
             this.layer.appendChild(el);
 
             this.makeDraggable(el, item.id);
@@ -751,7 +759,14 @@ class RoomManager {
 
             // Bounds
             xPct = Math.max(0, Math.min(xPct, 100));
-            yPct = Math.max(20, Math.min(yPct, 100)); // 벽면 상단 제한
+            
+            const cfg = this.furnitureConfig[itemId] || { zBase: 10 };
+            // 창문 등 벽면 가구는 상단에만, 바닥 가구는 하단에만 이동 제한
+            if (cfg.isWall) {
+                yPct = Math.max(10, Math.min(yPct, 45));
+            } else {
+                yPct = Math.max(45, Math.min(yPct, 100));
+            }
 
             el.style.left = xPct + '%';
             el.style.top = yPct + '%';
