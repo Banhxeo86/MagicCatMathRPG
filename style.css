@@ -32,8 +32,8 @@ body {
 /* ── 캔버스 컨테이너 ── */
 #game-container {
     position: relative;
-    width: 800px;
-    height: 600px;
+    width: 1024px;
+    height: 768px;
     border-radius: 16px;
     border: 3px solid var(--primary);
     box-shadow: 0 0 40px rgba(124,92,252,0.5), var(--shadow);
@@ -73,8 +73,10 @@ body {
 
 .gold-pill    { color: var(--accent); font-family: 'Orbitron', sans-serif; }
 .stage-pill   { color: var(--primary-light); }
+.correct-pill { color: #a29bfe; }
 .progress-pill{ color: #81ecec; }
 .combo-pill   { color: #fdcb6e; font-family: 'Orbitron', sans-serif; }
+.exit-pill    { background: rgba(239, 71, 111, 0.4); color: white; cursor: pointer; pointer-events: auto; }
 
 .shop-pill {
     background: linear-gradient(135deg, var(--primary), #a855f7);
@@ -304,6 +306,12 @@ body {
     border-color: var(--success);
 }
 
+.shop-item.locked {
+    opacity: 0.6;
+    background: rgba(0,0,0,0.4);
+    cursor: not-allowed;
+}
+
 .shop-item img {
     width: 60px; height: 60px;
     object-fit: contain;
@@ -529,6 +537,16 @@ body {
         object-fit: contain;
     }
 
+    #hud {
+        flex-wrap: wrap;
+        top: 8px;
+        gap: 4px;
+    }
+
+    #hud-left, #hud-right {
+        gap: 4px;
+    }
+
     .modal-card {
         width: 90% !important;
         padding: 20px;
@@ -580,22 +598,22 @@ body {
     }
 }
 
-/* 세로 모드 대응 */
-@media (max-width: 500px) {
+/* 세로 모드 및 소형 모바일 대응 */
+@media (max-width: 550px) {
     #hud {
-        top: 8px;
-        left: 8px;
-        right: 8px;
+        top: 6px;
+        left: 6px;
+        right: 6px;
         flex-direction: column;
         align-items: flex-start;
         gap: 4px;
     }
-    #hud-left, #hud-right {
-        gap: 4px;
+    #hud-right {
+        align-self: flex-end;
     }
     .hud-pill {
         padding: 3px 8px;
-        font-size: 0.7rem;
+        font-size: 0.65rem;
     }
     .shop-grid {
         grid-template-columns: 1fr;

@@ -14,14 +14,14 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 // ES6 Class 기반, 3000x3000 월드 + 카메라 + 3스테이지
 
 const CONFIG = {
-    CW: 800, CH: 600,
+    CW: 1024, CH: 768,
     WW: 3000, WH: 3000,
-    BASE_SPEED: 4,
-    STONE_COUNT: 20,
+    BASE_SPEED: 240, // Pixels per second (60fps * 4px)
+    STONE_COUNT: 40,
     STAGES: [
-        { id:1, name:'Stage 1', goalGold:500,  mathRange:10, filter:'none',                                          label:'마법 초원' },
-        { id:2, name:'Stage 2', goalGold:1500, mathRange:20, filter:'hue-rotate(200deg) brightness(0.65) saturate(2)', label:'신비한 밤' },
-        { id:3, name:'Stage 3', goalGold:3000, mathRange:30, filter:'sepia(0.7) saturate(2.5) hue-rotate(320deg)',    label:'붉은 노을' },
+        { id:1, name:'Stage 1', goalGold:2000,  mathRange:10, filter:'none',                                          label:'마법 초원', maxQ: 3 },
+        { id:2, name:'Stage 2', goalGold:7000,  mathRange:20, filter:'hue-rotate(200deg) brightness(0.65) saturate(2)', label:'신비한 밤', maxQ: 4 },
+        { id:3, name:'Stage 3', goalGold:15000, mathRange:30, filter:'sepia(0.7) saturate(2.5) hue-rotate(320deg)',    label:'붉은 노을', maxQ: 5 },
     ]
 };
 
@@ -89,7 +89,13 @@ class Particle {
         const c = ['#ffd166','#a78bfa','#06d6a0','#74b9ff','#fd79a8','#ffeaa7'];
         this.color = c[Math.floor(Math.random() * c.length)];
     }
-    update() { this.x += this.vx; this.y += this.vy; this.vx *= 0.96; this.vy *= 0.96; this.life -= this.decay; }
+    update(dt) { 
+        this.x += this.vx * 60 * dt; 
+        this.y += this.vy * 60 * dt; 
+        this.vx *= Math.pow(0.96, 60 * dt); 
+        this.vy *= Math.pow(0.96, 60 * dt); 
+        this.life -= this.decay * 60 * dt; 
+    }
     draw(ctx) {
         ctx.save();
         ctx.globalAlpha = Math.max(0, this.life);
@@ -103,7 +109,7 @@ class Particle {
 class ParticleSystem {
     constructor() { this.list = []; }
     burst(x, y, n = 22) { for (let i = 0; i < n; i++) this.list.push(new Particle(x, y)); }
-    update() { this.list = this.list.filter(p => { p.update(); return p.life > 0; }); }
+    update(dt) { this.list = this.list.filter(p => { p.update(dt); return p.life > 0; }); }
     draw(ctx) { this.list.forEach(p => p.draw(ctx)); }
 }
 
@@ -146,7 +152,7 @@ class Player extends Entity {
         this.tick   = 0;   // 프레임 카운터
         this.moving = false;
     }
-    update() {
+    update(dt) {
         // 속도 계산 로직을 update 상단으로 이동하여 항상 최신화 유지
         this.updateSpeed();
 
@@ -157,13 +163,19 @@ class Player extends Entity {
         if (dx !== 0) this.facing = dx > 0 ? 1 : -1;
         
         if (dx && dy) { const m = Math.SQRT2; dx/=m; dy/=m; }
-        this.x = Math.max(0, Math.min(this.x + dx * this.speed, CONFIG.WW - this.w));
-        this.y = Math.max(0, Math.min(this.y + dy * this.speed, CONFIG.WH - this.h));
-        this.tick++;
+        
+        // Delta Time 적용 이동
+        const moveDist = this.speed * dt;
+        this.x = Math.max(0, Math.min(this.x + dx * moveDist, CONFIG.WW - this.w));
+        this.y = Math.max(0, Math.min(this.y + dy * moveDist, CONFIG.WH - this.h));
+        
+        this.tick += 60 * dt;
     }
     updateSpeed() {
         let multiplier = 1;
-        if (this.items.has('boots')) multiplier = 1.8;
+        if (this.items.has('boots_lv3')) multiplier = 2.0;
+        else if (this.items.has('boots_lv2')) multiplier = 1.6;
+        else if (this.items.has('boots_lv1')) multiplier = 1.3;
         this.speed = Math.round(CONFIG.BASE_SPEED * multiplier);
     }
     addGold(amt) {
@@ -242,12 +254,12 @@ class Pet extends Entity {
         this.player = player;
         this.t = 0; // for hover animation
     }
-    update() {
-        this.t += 0.06;
+    update(dt) {
+        this.t += 0.06 * 60 * dt;
         const tx = this.player.x - 40;
         const ty = this.player.y - 30 + Math.sin(this.t) * 6;
-        this.x += (tx - this.x) * 0.1;
-        this.y += (ty - this.y) * 0.1;
+        this.x += (tx - this.x) * (1 - Math.pow(0.9, 60 * dt));
+        this.y += (ty - this.y) * (1 - Math.pow(0.9, 60 * dt));
     }
 }
 
@@ -263,7 +275,7 @@ class Portal extends Entity {
         this.active = true;
         this.t = 0; // for float animation
     }
-    update() { this.t += 0.05; }
+    update(dt) { this.t += 0.05 * 60 * dt; }
     draw(ctx, assets) {
         const img = assets.get(this.imgId);
         if (!img) return;
@@ -374,6 +386,7 @@ class QuizManager {
         this.submitBtn = document.getElementById('quiz-submit-btn');
         this.answer  = 0;
         this.combo   = 0;
+        this.totalCorrect = 0;
         this.active  = false;
         this.inp.addEventListener('keydown', e => { if (e.key==='Enter') this.check(); });
         this.inp.addEventListener('input', () => {
@@ -389,7 +402,7 @@ class QuizManager {
         this.active = true;
         this.targetStone = stone;  // 풀고 나면 이 광맥을 제거
         this.qCount  = 0;          // 이번 광맥에서 푼 문제 수
-        this.maxQ    = 3;          // 광맥 1개당 문제 수
+        this.maxQ    = this.game.stageManager.currentStage().maxQ || 3;
         this.game.paused = true;
         this.modal.classList.remove('hidden');
         this.nextQ();
@@ -437,6 +450,7 @@ class QuizManager {
         if (val === this.answer) {
             this.combo++;
             this.qCount++;
+            this.totalCorrect++;
             if (this.combo > this.game.bestCombo) this.game.bestCombo = this.combo;
             const earned = this.game.player.addGold(10 * this.combo);
             this.fbEl.style.color = '#06d6a0';
@@ -447,7 +461,7 @@ class QuizManager {
             SaveManager.save(this.game.player, this.game.bestCombo, this.game.stageManager.idx);
             this.game.stageManager.checkGoal();
             if (this.qCount >= this.maxQ) {
-                // 3문제 모두 완료 → 광맥 제거 후 닫기
+                // 목표 문제 수 모두 완료 → 광맥 제거 후 닫기
                 this.fbEl.textContent = `완벽! 광맥이 사라집니다 ✨`;
                 setTimeout(() => this.closeAndRemoveStone(), 700);
             } else {
@@ -455,9 +469,11 @@ class QuizManager {
             }
         } else {
             this.combo = 0;
-            this.game.player.gold = Math.max(0, this.game.player.gold - 30);
+            const stageIdx = this.game.stageManager.idx;
+            const penalty = 30 + (stageIdx * 20); // 스테이지가 높을수록 페널티 증가
+            this.game.player.gold = Math.max(0, this.game.player.gold - penalty);
             this.fbEl.style.color = '#ef476f';
-            this.fbEl.textContent = '오답... -30G 😢 (광맥 이탈)';
+            this.fbEl.textContent = `오답... -${penalty}G 😢 (광맥 이탈)`;
             this.game.audio.playWrong();
             SaveManager.save(this.game.player, this.game.bestCombo, this.game.stageManager.idx);
             this.game.updateHUD();
@@ -491,8 +507,18 @@ class ShopManager {
         // 아이템 데이터 배열
         this.items = [
             {
-                id:'boots', name:'바람의 부츠', price:1000, imgId:'item_boots',
-                desc:'이동 속도가 크게 증가합니다.',
+                id:'boots_lv1', name:'바람의 부츠 (Lv.1)', price:800, imgId:'item_boots',
+                desc:'이동 속도가 30% 증가합니다.',
+                effect: p => { /* dynamic speed calc in Player.update */ }
+            },
+            {
+                id:'boots_lv2', name:'질주의 부츠 (Lv.2)', price:2500, imgId:'item_boots',
+                desc:'이동 속도가 60% 증가합니다.', requires:'boots_lv1',
+                effect: p => { /* dynamic speed calc in Player.update */ }
+            },
+            {
+                id:'boots_lv3', name:'신속의 부츠 (Lv.3)', price:6000, imgId:'item_boots',
+                desc:'이동 속도가 100% 증가합니다!', requires:'boots_lv2',
                 effect: p => { /* dynamic speed calc in Player.update */ }
             },
             {
@@ -556,19 +582,29 @@ class ShopManager {
         this.grid.innerHTML = '';
         this.items.forEach(item => {
             const owned = this.game.player.items.has(item.id);
+            const locked = item.requires && !this.game.player.items.has(item.requires);
             const imgSrc = this.game.assets.getSrc(item.imgId);
             const div = document.createElement('div');
-            div.className = `shop-item${owned ? ' owned' : ''}`;
+            div.className = `shop-item${owned ? ' owned' : ''}${locked ? ' locked' : ''}`;
+            
+            let priceText = owned ? '✅ 구매 완료' : item.price+'G';
+            if (!owned && locked) priceText = '🔒 잠김';
+
             div.innerHTML = `
-                <img src="${imgSrc}" alt="${item.name}">
+                <img src="${imgSrc}" alt="${item.name}" style="${locked ? 'filter:grayscale(1) brightness(0.5)' : ''}">
                 <span class="item-name">${item.name}</span>
                 <span class="item-desc">${item.desc}</span>
-                <span class="item-price">${owned ? '✅ 구매 완료' : item.price+'G'}</span>`;
-            if (!owned) div.onclick = () => this.buy(item);
+                <span class="item-price">${priceText}</span>`;
+            if (!owned && !locked) div.onclick = () => this.buy(item);
+            else if (locked) div.onclick = () => this.game.notify(`⚠️ 이전 단계 아이템을 먼저 구매해야 합니다!`);
             this.grid.appendChild(div);
         });
     }
     buy(item) {
+        if (item.requires && !this.game.player.items.has(item.requires)) {
+            this.game.notify('⚠️ 이전 단계 아이템을 먼저 구매해야 합니다!');
+            return;
+        }
         if (this.game.player.gold < item.price) { this.game.notify('⚠️ 골드가 부족합니다!'); return; }
         
         if (!confirm(`[${item.name}]을(를) 구매하시겠습니까?\n가격: ${item.price}G`)) return;
@@ -831,6 +867,20 @@ class Game {
         this.init();
         this.handleResize();
         window.addEventListener('resize', () => this.handleResize());
+        
+        // Delta Time 초기화
+        this.lastTime = 0;
+        
+        document.getElementById('exit-btn').onclick = () => {
+            if (confirm('메인 화면으로 돌아가시겠습니까? 현재 진행 상황은 저장됩니다.')) {
+                this.goToStartScreen();
+            }
+        };
+    }
+    
+    goToStartScreen() {
+        this.paused = true;
+        document.getElementById('start-screen').classList.remove('hidden');
     }
 
     handleResize() {
@@ -978,6 +1028,7 @@ class Game {
         document.getElementById('stage-display').textContent   = s.name;
         document.getElementById('progress-display').textContent = `${this.player.gold} / ${s.goalGold}G`;
         document.getElementById('best-combo-display').textContent = this.bestCombo;
+        document.getElementById('correct-count').textContent = this.quizManager.totalCorrect;
         this.stageManager.updateUI();
     }
 
@@ -990,7 +1041,7 @@ class Game {
     }
 
     // ── update ──
-    update() {
+    update(dt) {
         if (this.paused) return;
 
         this.player.vx = 0; this.player.vy = 0;
@@ -1007,11 +1058,11 @@ class Game {
             this.player.vy = this.joystick.value.y;
         }
 
-        this.player.update();
+        this.player.update(dt);
         this.camera.follow(this.player);
-        if (this.pet) this.pet.update();
-        if (this.portal) this.portal.update();
-        this.particles.update();
+        if (this.pet) this.pet.update(dt);
+        if (this.portal) this.portal.update(dt);
+        this.particles.update(dt);
         this.checkCollisions();
     }
 
@@ -1096,10 +1147,14 @@ class Game {
         ctx.restore();
     }
 
-    loop() {
-        this.update();
+    loop(timestamp = 0) {
+        if (!this.lastTime) this.lastTime = timestamp;
+        const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1); // 최대 0.1초 캡 (끊김 방지)
+        this.lastTime = timestamp;
+
+        this.update(dt);
         this.render();
-        requestAnimationFrame(() => this.loop());
+        requestAnimationFrame((t) => this.loop(t));
     }
 }
 

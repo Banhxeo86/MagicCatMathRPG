@@ -10,20 +10,22 @@
 </head>
 <body>
     <div id="game-container">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <canvas id="gameCanvas" width="1024" height="768"></canvas>
 
         <!-- HUD Overlay -->
         <div id="hud">
             <div id="hud-left">
                 <div class="hud-pill gold-pill">💰 <span id="gold-display">0</span>G</div>
                 <div class="hud-pill stage-pill">🗺️ <span id="stage-display">Stage 1</span></div>
-                <div class="hud-pill progress-pill">🎯 목표: <span id="progress-display">0 / 300G</span></div>
+                <div class="hud-pill correct-pill">✅ 정답: <span id="correct-count">0</span></div>
+                <div class="hud-pill progress-pill">🎯 목표: <span id="progress-display">0 / 2000G</span></div>
                 <button id="open-shop-btn" class="hud-pill shop-pill">🏪 상점</button>
                 <button id="open-room" class="hud-pill room-pill">🏠 마이룸</button>
                 <button id="prev-stage-btn" class="hud-pill prev-pill hidden">⬅️ 이전 단계로</button>
             </div>
             <div id="hud-right">
                 <div class="hud-pill combo-pill">🏆 최고콤보 <span id="best-combo-display">0</span></div>
+                <button id="exit-btn" class="hud-pill exit-pill">🚪 끝내기</button>
             </div>
         </div>
 
