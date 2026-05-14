@@ -771,7 +771,6 @@ class RoomManager {
             el.style.left = xPct + '%';
             el.style.top = yPct + '%';
             
-            const cfg = this.furnitureConfig[itemId] || { zBase: 10 };
             el.style.zIndex = Math.floor(cfg.zBase * 10 + yPct);
             
             this.game.player.furniturePositions[itemId] = { x: xPct, y: yPct };
