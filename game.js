@@ -192,13 +192,21 @@ class Player extends Entity {
         return earned;
     }
     draw(ctx, assets) {
+        const cx = this.x + this.w / 2;
+        const cy = this.y + this.h / 2;
+
+        // 1. 바닥 그림자 (입체감 부여)
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.ellipse(cx, this.y + this.h - 5, 20, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
         const sheet = assets.get('cat_player');
         if (!sheet) {
-            // 폴백: 원본 player_cat 사용
             const img = assets.get('player_cat');
             if (!img) return;
-            const cx = this.x + this.w / 2;
-            const cy = this.y + this.h / 2;
             ctx.save();
             ctx.translate(cx, cy);
             ctx.scale(this.facing, 1);
@@ -207,49 +215,32 @@ class Player extends Entity {
             return;
         }
 
-        const cx = this.x + this.w / 2;
-        const cy = this.y + this.h / 2;
+        // ─ 스프라이트 시트 정보 ─
+        const frameW = sheet.width / 4;
+        const frameH = sheet.height / 4;
 
-        // ─ 스프라이트 시트 정보 (4x4) ─
-        const frameW = Math.floor(sheet.width / 4);
-        const frameH = Math.floor(sheet.height / 4);
-
-        // 방향에 따른 행(Row) 결정
-        // 0: Down (Front), 1: Up (Back), 2: Right, 3: Left
         let row = 0;
-        if (Math.abs(this.vx) > Math.abs(this.vy)) {
-            // 좌우 이동이 더 크거나 대각선일 때 좌우 우선
-            row = this.vx > 0 ? 2 : 3;
-        } else if (Math.abs(this.vy) > 0) {
-            // 상하 이동이 더 클 때
-            row = this.vy > 0 ? 0 : 1;
-        } else {
-            // 정지 상태일 때 마지막 방향 유지
-            if (this.facing === 1) row = 2;
-            else if (this.facing === -1) row = 3;
-        }
+        if (Math.abs(this.vx) > Math.abs(this.vy)) row = this.vx > 0 ? 2 : 3;
+        else if (Math.abs(this.vy) > 0) row = this.vy > 0 ? 0 : 1;
+        else row = this.facing === 1 ? 2 : 3;
 
-        // 애니메이션 프레임 (4프레임 순환)
-        let frameIdx = 0;
-        if (this.moving) {
-            frameIdx = Math.floor(this.tick / 10) % 4; // 10틱마다 프레임 전환
-        } else {
-            frameIdx = 0; // Idle
-        }
-
-        // 정지 시 느리게 숨쉬기 효과 (약간의 스케일 변화)
+        let frameIdx = this.moving ? Math.floor(this.tick / 10) % 4 : 0;
         const breathe = this.moving ? 1 : 1 + Math.sin(this.tick * 0.05) * 0.02;
 
         ctx.save();
         ctx.translate(cx, cy);
         ctx.scale(breathe, breathe);
         
+        // 2. 캐릭터 외곽 광채 (마법 느낌)
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = 'rgba(167,139,250,0.5)';
+        
         ctx.drawImage(
             sheet,
-            frameIdx * frameW, row * frameH, // 소스 x, y
-            frameW, frameH,                 // 소스 너비, 높이
-            -this.w / 2, -this.h / 2,        // 배치 x, y
-            this.w, this.h                  // 렌더 크기
+            frameIdx * frameW, row * frameH,
+            frameW, frameH,
+            -this.w / 2, -this.h / 2,
+            this.w, this.h
         );
         ctx.restore();
     }
@@ -341,11 +332,14 @@ class Portal extends Entity {
 class AssetManager {
     constructor() { this.cache = {}; }
     async preload(list) {
-        const timeout = 15000; // 15초 타임아웃
+        const timeout = 60000; // 60초 타임아웃 (태블릿 환경 고려)
         await Promise.all(list.map(({id, path}) =>
             new Promise((res, rej) => {
                 const img = new Image();
-                const timer = setTimeout(() => rej(`Timeout: ${path}`), timeout);
+                const timer = setTimeout(() => {
+                    console.error(`Preload Timeout: ${path}`);
+                    rej(`Timeout: ${path}`);
+                }, timeout);
                 img.onload  = () => { clearTimeout(timer); this.cache[id] = img; res(); };
                 img.onerror = () => { clearTimeout(timer); rej(`Failed: ${path}`); };
                 img.src = path;
@@ -855,6 +849,7 @@ class StageManager {
         this.game.portal = null;
         this.game.stones = this.game.makeStones();
         this.game.updateHUD();
+        this.game.updateBackgroundPattern(); // 스테이지 변경 시 배경 패턴 다시 생성
         SaveManager.save(this.game.player, this.game.bestCombo, this.idx);
     }
     updateUI() {
@@ -967,6 +962,9 @@ class Game {
         this.quizManager  = new QuizManager(this);
         this.joystick     = null;
 
+        // 스테이지별 필터 적용된 배경 패턴 저장소
+        this._stagePatterns = [];
+
         this.init();
         this.handleResize();
         window.addEventListener('resize', () => this.handleResize());
@@ -1029,7 +1027,7 @@ class Game {
             ]);
 
             console.log("✨ 에셋 로드 완료. 투명화 처리 중...");
-            // 배경 투명화 처리 (CORS 에러 대비 try-catch)
+            // 배경 투명화 처리
             try {
                 this.assets.removeWhiteBg('player_cat', 230);
                 this.assets.removeWhiteBg('cat_player', 230);
@@ -1037,19 +1035,30 @@ class Game {
                     this.assets.removeWhiteBg(id, 245);
                 });
             } catch (e) {
-                console.warn("⚠️ 투명화 처리 중 오류 발생 (로컬 파일 보안 정책일 수 있음):", e);
+                console.warn("⚠️ 투명화 처리 중 오류 발생:", e);
             }
 
-            // 배경 패턴 생성
-            const bgImg = this.assets.get('bg_floor');
-            if (bgImg) this._bgPat = this.ctx.createPattern(bgImg, 'repeat');
+            // 배경 패턴 및 필터 최적화 (태블릿 성능 향상)
+            this.updateBackgroundPattern();
 
             console.log("✅ 게임 준비 완료!");
         } catch (err) {
             console.error("❌ 초기화 중 치명적 오류 발생:", err);
-            alert("게임 로딩 중 오류가 발생했습니다. 개발자 도구(F12)를 확인해 주세요.");
+            // 태블릿에서 로딩이 안 될 경우 사용자에게 알림 및 재시도 제안
+            const loadingEl = document.getElementById('loading-screen');
+            if (loadingEl) {
+                loadingEl.innerHTML = `
+                    <div class="modal-card" style="width:300px;">
+                        <p style="color:#ef476f; margin-bottom:20px;">로딩 지연 또는 오류</p>
+                        <button onclick="location.reload()" class="primary-btn">다시 시도</button>
+                    </div>
+                `;
+            }
         } finally {
-            document.getElementById('loading-screen').classList.add('hidden');
+            const loadingEl = document.getElementById('loading-screen');
+            if (loadingEl && !loadingEl.querySelector('.primary-btn')) {
+                loadingEl.classList.add('hidden');
+            }
         }
 
         this.stones = this.makeStones();
@@ -1110,6 +1119,24 @@ class Game {
         const px = 600 + Math.random() * (CONFIG.WW - 1200);
         const py = 600 + Math.random() * (CONFIG.WH - 1200);
         this.portal = new Portal(px, py);
+    }
+
+    updateBackgroundPattern() {
+        const bgImg = this.assets.get('bg_floor');
+        if (!bgImg) return;
+
+        const stage = this.stageManager.currentStage();
+        // 매 프레임 ctx.filter를 쓰는 대신, 오프스크린 캔버스에서 한 번만 필터를 입힌 패턴을 생성합니다.
+        const oc = document.createElement('canvas');
+        const tw = bgImg.naturalWidth || 512;
+        const th = bgImg.naturalHeight || 512;
+        oc.width = tw; oc.height = th;
+        const octx = oc.getContext('2d');
+        
+        octx.filter = stage.filter;
+        octx.drawImage(bgImg, 0, 0, tw, th);
+        
+        this._bgPat = this.ctx.createPattern(oc, 'repeat');
     }
 
     bindKeys() {
@@ -1218,10 +1245,7 @@ class Game {
         const cam = this.camera;
         const stage = this.stageManager.currentStage();
 
-        ctx.clearRect(0, 0, CONFIG.CW, CONFIG.CH);
-
-        // 배경 (스테이지 필터 적용)
-        ctx.filter = stage.filter;
+        // 배경 (사전에 필터링된 패턴 사용으로 성능 극대화)
         if (this._bgPat) {
             const bg = this.assets.get('bg_floor');
             const tw = bg.naturalWidth  || 512;
@@ -1234,7 +1258,6 @@ class Game {
             ctx.fillRect(-tw, -th, CONFIG.CW + tw*2, CONFIG.CH + th*2);
             ctx.restore();
         }
-        ctx.filter = 'none';
 
         // 월드 엔티티는 카메라 오프셋 적용
         ctx.save();
