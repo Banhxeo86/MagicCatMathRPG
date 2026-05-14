@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>마법 고양이 수학 RPG - 교사용 지도 가이드</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #7c5cfc;
+            --primary-light: #a78bfa;
+            --accent: #ffd166;
+            --bg: #f8f9fa;
+            --text: #333;
+            --card-bg: #ffffff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 60px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .cover-img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            border-radius: 15px;
+            margin-bottom: 40px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+            word-break: keep-all;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #666;
+            font-weight: 700;
+        }
+
+        section {
+            margin-bottom: 50px;
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            color: var(--primary);
+            border-left: 6px solid var(--primary);
+            padding-left: 15px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+        }
+
+        h2 i { margin-right: 10px; }
+
+        h3 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #444;
+        }
+
+        p {
+            margin-bottom: 15px;
+            font-size: 1.05rem;
+            color: #555;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .feature-card {
+            background: #f1f3f9;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-card img {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 15px;
+            object-fit: contain;
+        }
+
+        .feature-card h4 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .step-box {
+            background: #fff;
+            border: 2px solid #eee;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .step-title {
+            font-weight: 900;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .controls-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .controls-table th, .controls-table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+
+        .controls-table th {
+            background-color: #f8f9fa;
+            color: var(--primary);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: var(--primary);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-right: 5px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 80px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        .print-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 30px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 100;
+        }
+
+        @media print {
+            .print-btn { display: none; }
+            body { padding: 0; background: white; }
+            .container { box-shadow: none; max-width: 100%; padding: 20px; }
+        }
+
+        .img-placeholder {
+            width: 100%;
+            height: 200px;
+            background: #eee;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            margin: 15px 0;
+            color: #aaa;
+        }
+
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .screenshot-item {
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #eee;
+        }
+
+        .screenshot-item img {
+            width: 100%;
+            display: block;
+        }
+
+        .screenshot-item p {
+            padding: 10px;
+            background: #f8f9fa;
+            margin: 0;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">PDF로 저장하기 / 인쇄</button>
+
+    <div class="container">
+        <img src="images/guide_cover.png" alt="Guide Cover" class="cover-img">
+        
+        <header>
+            <h1>마법 고양이 수학 RPG</h1>
+            <p class="subtitle">교사용 학습 지도 메뉴얼</p>
+        </header>
+
+        <section>
+            <h2>🎯 교육 목표</h2>
+            <p>본 프로그램은 초등학교 저학년 학생들을 대상으로, 게임의 재미 요소와 수학 연산 학습을 결합하여 다음과 같은 교육적 효과를 기대합니다.</p>
+            <ul>
+                <li><strong>연산 자동화</strong>: 반복적인 퀴즈 풀이를 통해 기초 덧셈과 뺄셈의 정확도와 속도를 향상시킵니다.</li>
+                <li><strong>자기주도적 학습</strong>: 획득한 골드로 자신의 공간을 꾸미는 과정을 통해 스스로 학습 목표를 설정하고 달성하는 경험을 제공합니다.</li>
+                <li><strong>수학적 자신감</strong>: 콤보 시스템을 통한 즉각적인 피드백과 보상으로 수학에 대한 긍정적인 태도를 형성합니다.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>🗺️ 스테이지 구성 및 난이도</h2>
+            <div class="step-box">
+                <div class="step-title"><span class="badge">Level 1</span> 마법 초원</div>
+                <p>기초 단계: 한 자리 수 + 한 자리 수 (결과값 20 미만). 덧셈의 원리를 익히는 단계입니다.</p>
+            </div>
+            <div class="step-box">
+                <div class="step-title"><span class="badge">Level 2</span> 신비한 밤</div>
+                <p>중급 단계: 두 자리 수 + 한 자리 수. 올림이 있는 연산을 자연스럽게 연습합니다.</p>
+            </div>
+            <div class="step-box">
+                <div class="step-title"><span class="badge">Level 3</span> 붉은 노을</div>
+                <p>심화 단계: 두 자리 수 + 두 자리 수. 복합적인 암산 능력을 기르는 최종 단계입니다.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>🎮 주요 게임 시스템</h2>
+            <div class="grid">
+                <div class="feature-card">
+                    <img src="images/magic_stone.png" alt="Math Stone">
+                    <h4>마법 광맥</h4>
+                    <p>수학 문제가 봉인된 바위입니다. 충돌하여 퀴즈를 해결하고 마법 에너지를 얻습니다.</p>
+                </div>
+                <div class="feature-card">
+                    <img src="images/potal.png" alt="Portal">
+                    <h4>차원 포탈</h4>
+                    <p>스테이지 목표 골드를 달성하면 나타납니다. 다음 학습 단계로 넘어가는 관문입니다.</p>
+                </div>
+                <div class="feature-card">
+                    <img src="images/pet_owl.png" alt="Pet Owl">
+                    <h4>황금 부엉이</h4>
+                    <p>연산 능력을 보조하는 마법 펫입니다. 획득 골드를 2배로 늘려주는 학습 조력자입니다.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>🏠 동기부여 요소: 마이룸</h2>
+            <div class="screenshot-item">
+                <img src="images/room_bg.png" alt="My Room">
+                <p>획득한 골드로 가구를 구매하여 꾸미는 개인 공간</p>
+            </div>
+            <p>학생들은 학습을 통해 번 골드로 침대, 책상, 카펫 등 다양한 아이템을 구매할 수 있습니다. 이는 단순한 놀이를 넘어, 노력에 대한 정당한 보상을 체험하고 자신의 성과를 시각적으로 확인하는 중요한 동기부여 요소가 됩니다.</p>
+        </section>
+
+        <section>
+            <h2>⌨️ 조작 및 인터페이스</h2>
+            <table class="controls-table">
+                <thead>
+                    <tr>
+                        <th>기능</th>
+                        <th>조작 방법</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>고양이 이동</strong></td>
+                        <td>방향키 (↑↓←→) / 모바일 가상 조이스틱</td>
+                    </tr>
+                    <tr>
+                        <td><strong>상점 열기</strong></td>
+                        <td>화면 내 [상점] 아이콘 클릭 또는 <strong>S</strong>키</td>
+                    </tr>
+                    <tr>
+                        <td><strong>마이룸 이동</strong></td>
+                        <td>화면 내 [마이룸] 아이콘 클릭 또는 <strong>H</strong>키</td>
+                    </tr>
+                    <tr>
+                        <td><strong>저장 방식</strong></td>
+                        <td>브라우저 자동 로컬 저장 (별도 로그인 불필요)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>💡 교사 가이드 팁</h2>
+            <p>1. <strong>오답 피드백</strong>: 오답 시 골드가 차감되고 광맥에서 튕겨나갑니다. 실패를 두려워하지 말고 다시 시도하도록 격려해 주세요.</p>
+            <p>2. <strong>콤보의 중요성</strong>: 연속 정답 시 골드가 기하급수적으로 늘어납니다. '정확함'이 '빠름'보다 더 큰 보상을 준다는 점을 강조해 주세요.</p>
+            <p>3. <strong>학급 공유</strong>: 수업 마무리 단계에서 각자의 마이룸 화면을 캡처하여 학급 커뮤니티에 공유하거나 서로의 방을 구경하는 시간을 가지면 좋습니다.</p>
+        </section>
+
+        <footer>
+            <p>© 2026 AI-ON 교육 테크 팀. 모든 권리 보유.</p>
+            <p>본 문서는 마법 고양이 수학 RPG의 공식 교사 매뉴얼입니다.</p>
+        </footer>
+    </div>
+</body>
+</html>
