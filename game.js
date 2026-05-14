@@ -69,7 +69,8 @@ class SaveManager {
             items: [...player.items],
             bestCombo,
             stageIdx,
-            furniturePositions: player.furniturePositions
+            furniturePositions: player.furniturePositions,
+            playerLevel: player.level
         }));
     }
     static load() {
@@ -148,6 +149,7 @@ class Player extends Entity {
         this.items  = new Set();
         this.hasOwl = false;
         this.owlLevel = 0;
+        this.level = 1; // 1: 아기 고양이, 2: 견습 고양이, 3: 대마법 고양이
         this.furniturePositions = {}; // itemId -> {x, y}
         this.vx = 0; this.vy = 0;
         // 애니메이션용
@@ -195,15 +197,22 @@ class Player extends Entity {
         const cx = this.x + this.w / 2;
         const cy = this.y + this.h / 2;
 
-        // 1. 바닥 그림자 (입체감 부여)
+        // 1. 바닥 그림자
         ctx.save();
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.beginPath();
-        ctx.ellipse(cx, this.y + this.h - 5, 20, 8, 0, 0, Math.PI * 2);
+        // 레벨에 따른 그림자 크기 조절
+        const shadowSize = 15 + (this.level * 5);
+        ctx.ellipse(cx, this.y + this.h - 5, shadowSize, 8, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
 
-        const sheet = assets.get('cat_player');
+        // 레벨에 따른 스프라이트 시트 결정
+        let sheetId = 'cat_level1';
+        if (this.level === 2) sheetId = 'cat_level2';
+        else if (this.level === 3) sheetId = 'cat_level3';
+
+        const sheet = assets.get(sheetId) || assets.get('cat_player');
         if (!sheet) {
             const img = assets.get('player_cat');
             if (!img) return;
@@ -574,11 +583,6 @@ class ShopManager {
                 id:'room_potion', name:'신비한 마법 물약', price:1200, imgId:'room_potion',
                 desc:'보글보글 거품이 일어나는 마법 포션.', type:'furniture',
                 pos: { x: '30%', y: '45%', w: 60 }, isFloating: true
-            },
-            {
-                id:'room_crystal_ball', name:'예언의 수정구', price:4500, imgId:'room_crystal_ball',
-                desc:'미래의 운명을 보여주는 신비한 구슬.', type:'furniture',
-                pos: { x: '60%', y: '40%', w: 80 }, isFloating: true
             }
         ];
     }
@@ -658,8 +662,7 @@ class RoomManager {
             'room_broom':         { zBase: 20, w: 100, isFloating: true },
             'room_grimoire':      { zBase: 22, w: 100, isFloating: true },
             'room_magic_crystal': { zBase: 25, w: 90,  isFloating: true },
-            'room_potion':        { zBase: 18, w: 65,  isFloating: true },
-            'room_crystal_ball':  { zBase: 23, w: 85,  isFloating: true }
+            'room_potion':        { zBase: 18, w: 65,  isFloating: true }
         };
 
         document.getElementById('open-room').onclick  = () => this.toggle();
@@ -832,11 +835,17 @@ class StageManager {
         if (this.idx < CONFIG.STAGES.length - 1) {
             this.idx++;
             this.resetStage();
+            
+            // 진화 로직: 스테이지 이동 시 레벨업
+            this.game.player.level = this.idx + 1;
+            const evolutionNames = ['', '아기 고양이', '견습 고양이', '대마법 고양이'];
+            
             const s = this.currentStage();
-            this.game.notify(`🌟 ${s.name} - ${s.label} 시작!`);
+            this.game.notify(`🌟 진화! [${evolutionNames[this.game.player.level]}]가 되었습니다!`);
             this.game.audio.playFanfare();
+            this.game.updateHUD();
         } else {
-            this.game.notify('🎉 모든 스테이지 클리어! 수학 마법사 달성!');
+            this.game.notify('🎉 모든 스테이지 클리어! 전설의 대마법사 달성!');
         }
     }
     prevStage() {
@@ -1021,6 +1030,10 @@ class Game {
                 { id:'bg_floor',    path:'images/bg_floor.png'    },
                 { id:'item_boots',  path:'images/item_boots.png'  },
                 { id:'pet_owl',     path:'images/pet_owl.png'     },
+                // 고양이 레벨별 에셋
+                { id:'cat_level1',  path:'images/cat_level1.png'  },
+                { id:'cat_level2',  path:'images/cat_level2.png'  },
+                { id:'cat_level3',  path:'images/cat_level3.png'  },
                 // 방 관련 에셋
                 { id:'room_bg',     path:'images/room_bg.png'     },
                 { id:'room_bed',    path:'images/room_bed.png'    },
@@ -1038,7 +1051,9 @@ class Game {
             // 배경 투명화 처리
             try {
                 this.assets.removeWhiteBg('player_cat', 230);
-                this.assets.removeWhiteBg('cat_player', 230);
+                ['cat_level1', 'cat_level2', 'cat_level3', 'cat_player'].forEach(id => {
+                    this.assets.removeWhiteBg(id, 230);
+                });
                 ['room_bed','room_desk','room_rug','room_chair','room_bookshelf','room_lamp','room_plant','room_window','item_boots','pet_owl'].forEach(id => {
                     this.assets.removeWhiteBg(id, 245);
                 });
@@ -1102,6 +1117,7 @@ class Game {
         if (!d) return;
         this.player.gold = d.gold ?? 0;
         this.bestCombo   = d.bestCombo ?? 0;
+        this.player.level = d.playerLevel ?? 1;
         this.stageManager.idx = Math.min(d.stageIdx ?? 0, CONFIG.STAGES.length - 1);
         (d.items ?? []).forEach(id => {
             this.player.items.add(id);
