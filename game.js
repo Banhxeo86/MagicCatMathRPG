@@ -626,7 +626,9 @@ class RoomManager {
                     el.className = 'room-furniture';
                     el.style.left = item.pos.x;
                     el.style.top = item.pos.y;
-                    el.style.width = item.pos.w + 'px';
+                    // 600px 기준 너비를 cqw(Container Query Width)로 변환하여 반응형 대응
+                    const widthCqw = (item.pos.w / 600 * 100).toFixed(2);
+                    el.style.width = widthCqw + 'cqw';
                     this.layer.appendChild(el);
                 }
             }
@@ -704,6 +706,9 @@ class StageManager {
     }
     prevStage() {
         if (this.idx > 0) {
+            const prevLabel = CONFIG.STAGES[this.idx - 1].label;
+            if (!confirm(`[${prevLabel}](으)로 돌아가시겠습니까?\n현재 스테이지의 진행 상황이 저장되지 않을 수 있습니다.`)) return;
+
             this.idx--;
             this.resetStage();
             const s = this.currentStage();
