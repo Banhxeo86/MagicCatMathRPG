@@ -208,9 +208,9 @@ class Player extends Entity {
         ctx.restore();
 
         // 레벨에 따른 스프라이트 시트 결정
-        let sheetId = 'cat_level1';
-        if (this.level === 2) sheetId = 'cat_level2';
-        else if (this.level === 3) sheetId = 'cat_level3';
+        let sheetId = 'cat_level11';
+        if (this.level === 2) sheetId = 'cat_level12';
+        else if (this.level === 3) sheetId = 'cat_level13';
 
         const sheet = assets.get(sheetId) || assets.get('cat_player');
         if (!sheet) {
@@ -1030,10 +1030,10 @@ class Game {
                 { id:'bg_floor',    path:'images/bg_floor.png'    },
                 { id:'item_boots',  path:'images/item_boots.png'  },
                 { id:'pet_owl',     path:'images/pet_owl.png'     },
-                // 고양이 레벨별 에셋
-                { id:'cat_level1',  path:'images/cat_level1.png'  },
-                { id:'cat_level2',  path:'images/cat_level2.png'  },
-                { id:'cat_level3',  path:'images/cat_level3.png'  },
+                // 고양이 레벨별 에셋 (사용자가 업로드한 파일명에 맞춤)
+                { id:'cat_level11', path:'images/cat_level11.png' },
+                { id:'cat_level12', path:'images/cat_level12.png' },
+                { id:'cat_level13', path:'images/cat_level13.png' },
                 // 방 관련 에셋
                 { id:'room_bg',     path:'images/room_bg.png'     },
                 { id:'room_bed',    path:'images/room_bed.png'    },
@@ -1051,7 +1051,7 @@ class Game {
             // 배경 투명화 처리
             try {
                 this.assets.removeWhiteBg('player_cat', 230);
-                ['cat_level1', 'cat_level2', 'cat_level3', 'cat_player'].forEach(id => {
+                ['cat_level11', 'cat_level12', 'cat_level13', 'cat_player'].forEach(id => {
                     this.assets.removeWhiteBg(id, 230);
                 });
                 ['room_bed','room_desk','room_rug','room_chair','room_bookshelf','room_lamp','room_plant','room_window','item_boots','pet_owl'].forEach(id => {
