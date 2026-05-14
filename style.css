@@ -657,18 +657,26 @@ body {
     }
 
     #hud {
-        flex-wrap: wrap;
         top: 8px;
-        gap: 4px;
+        left: 8px;
+        right: 8px;
+        gap: 6px;
     }
 
-    #hud-left, #hud-right {
-        gap: 4px;
+    #stats-panel {
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    #controls-panel {
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
     }
 
     .stat-item {
-        min-width: 90px;
-        height: 48px;
+        min-width: 85px;
+        height: 46px;
         padding: 5px 10px;
     }
     .stat-item .label { font-size: 0.55rem; }
@@ -677,12 +685,12 @@ body {
     .stat-item .icon { width: 22px; height: 22px; top: -5px; left: -5px; font-size: 0.75rem; }
 
     .magic-btn {
-        width: 70px;
+        width: 64px;
         height: 42px;
         border-radius: 10px;
     }
     .magic-btn .icon { font-size: 1rem; }
-    .magic-btn .btn-text { font-size: 0.65rem; }
+    .magic-btn .btn-text { font-size: 0.6rem; }
 
     .modal-card {
         width: 90% !important;
@@ -738,30 +746,45 @@ body {
 /* 세로 모드 및 소형 모바일 대응 */
 @media (max-width: 550px) {
     #hud {
-        top: 6px;
-        left: 6px;
-        right: 6px;
+        top: 5px;
+        left: 5px;
+        right: 5px;
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
+        gap: 5px;
+    }
+
+    #stats-panel {
+        justify-content: space-between;
         gap: 4px;
+        flex-wrap: nowrap;
     }
-    #hud-right {
-        align-self: flex-end;
+
+    #controls-panel {
+        justify-content: flex-end;
+        gap: 5px;
+        flex-wrap: nowrap;
     }
+
     .stat-item {
-        min-width: 70px;
-        height: 40px;
-        padding: 4px 6px;
-    }
-    .stat-item .value { font-size: 0.8rem; }
-    .stat-item .sub-value { font-size: 0.5rem; }
-    
-    .magic-btn {
-        width: 60px;
+        min-width: 0;
+        flex: 1;
         height: 38px;
+        padding: 3px 6px;
     }
-    .magic-btn .icon { font-size: 0.85rem; }
-    .magic-btn .btn-text { font-size: 0.55rem; }
+    .stat-item .label { font-size: 0.5rem; }
+    .stat-item .value { font-size: 0.75rem; }
+    .stat-item .sub-value { font-size: 0.5rem; }
+    .stat-item .icon { width: 20px; height: 20px; top: -4px; left: -4px; font-size: 0.7rem; }
+
+    .magic-btn {
+        width: auto;
+        min-width: 52px;
+        height: 36px;
+        padding: 2px 8px;
+    }
+    .magic-btn .icon { font-size: 0.9rem; }
+    .magic-btn .btn-text { font-size: 0.5rem; }
 
     .hud-pill {
         padding: 3px 8px;

@@ -713,12 +713,15 @@ class ShopManager {
             
             const container = document.getElementById(imgContainerId);
             if (container && img) {
-                const displayImg = img.cloneNode ? img.cloneNode(true) : img;
+                const displayImg = document.createElement('img');
                 if (img instanceof HTMLCanvasElement) {
-                    displayImg.style.width = '100%';
-                    displayImg.style.height = '100%';
-                    displayImg.style.objectFit = 'contain';
+                    displayImg.src = img.toDataURL();
+                } else {
+                    displayImg.src = img.src;
                 }
+                displayImg.style.width = '100%';
+                displayImg.style.height = '100%';
+                displayImg.style.objectFit = 'contain';
                 container.appendChild(displayImg);
             }
             if (!isOwned) itemDiv.onclick = () => this.buy(item);
@@ -935,6 +938,9 @@ class Game {
     
     goToStartScreen() {
         this.paused = true;
+        // BGM 정지
+        this.audio.bgm.pause();
+        this.audio.bgm.currentTime = 0;
         document.getElementById('start-screen').classList.remove('hidden');
     }
 
